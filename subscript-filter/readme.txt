@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 
 Adds subscribe-and-save recurring purchasing to existing WooCommerce simple
@@ -100,6 +100,45 @@ Admin (Subscript Filter menu)
 * Warning banner if the Stripe gateway's "Saved cards" option is off.
 
 == Changelog ==
+
+= 1.4.0 =
+Bug-fix pass across the renewal engine, pricing, and admin/customer search —
+found by a full code audit before production testing:
+
+* **Double-charge risk removed.** The Stripe charge and renewal-order
+  creation happened in the wrong order with no idempotency protection: if
+  the HTTP call to Stripe succeeded but recording it failed, or a cron
+  overlap re-ran the same subscription, the customer could be charged
+  twice for one billing cycle. The renewal order is now created first (and
+  its ID used as a stable per-cycle Stripe idempotency key), so a retry
+  reuses the original charge result instead of creating a new one.
+  `wc_create_order()` returning `WP_Error` is now also handled instead of
+  fataling.
+* **Discount no longer compounds.** `woocommerce_before_calculate_totals`
+  can fire more than once per request; the subscription price was being
+  discounted from the *already discounted* price on each extra firing,
+  compounding it. Now always discounts from the stable regular price.
+* **Product-page price now matches what checkout charges.** The purchase
+  box was discounting from the current (possibly on-sale) price while the
+  cart discounted from the regular price — a store sale could make the
+  advertised subscribe price different from what the customer was actually
+  charged. Both now use the regular price, on the initial page render and
+  on variation change.
+* **Customer payment-method picker was always empty.** It looked up saved
+  cards with `WC_Payment_Tokens::get_customer_tokens( $id, 'stripe' )`,
+  which matches only an exact gateway ID of "stripe" — but this plugin
+  registers stripe_cc, stripe_applepay, etc., so the lookup never matched
+  anything. Fixed to match any gateway ID containing "stripe", consistent
+  with the rest of the plugin.
+* **Admin customer search was silently broken.** It searched `get_users()`
+  with a SQL LIKE-style `%term%` string, but `WP_User_Query`'s search
+  syntax uses `*` as its wildcard, not `%` — so searching by customer name
+  or email never returned a match. Fixed to use the correct wildcard.
+* **Renewal success email showed the wrong next-payment date** — it used
+  the subscription record from before the renewal, still holding the date
+  that had just come due, instead of the newly calculated one.
+* Hardened `Sfiler_Product::save()` against a malformed frequency POST
+  payload that could otherwise fatal on `foreach`.
 
 = 1.3.0 =
 * Verified integration against the real "Payment Plugins for Stripe

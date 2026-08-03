@@ -85,12 +85,25 @@ class Sfiler_Order {
 		);
 	}
 
+	/**
+	 * Creates a pending renewal order. Returns WP_Error if the order itself
+	 * couldn't be created — callers must check for that before attempting
+	 * to charge anything, since there would be nothing to record the charge
+	 * against.
+	 *
+	 * @return WC_Order|WP_Error
+	 */
 	public static function create_renewal_order( $subscription ) {
 		$order = wc_create_order(
 			array(
 				'customer_id' => $subscription->customer_id,
+				'status'      => 'pending',
 			)
 		);
+
+		if ( is_wp_error( $order ) ) {
+			return $order;
+		}
 
 		$product = wc_get_product( $subscription->variation_id ? $subscription->variation_id : $subscription->product_id );
 

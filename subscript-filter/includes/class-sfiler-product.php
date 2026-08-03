@@ -149,7 +149,8 @@ class Sfiler_Product {
 		}
 
 		$frequencies = array();
-		if ( isset( $_POST['sfiler_frequency_count'] ) && isset( $_POST['sfiler_frequency_unit'] ) ) {
+		if ( isset( $_POST['sfiler_frequency_count'], $_POST['sfiler_frequency_unit'] )
+			&& is_array( $_POST['sfiler_frequency_count'] ) && is_array( $_POST['sfiler_frequency_unit'] ) ) {
 			$counts = wp_unslash( $_POST['sfiler_frequency_count'] );
 			$units  = wp_unslash( $_POST['sfiler_frequency_unit'] );
 			$valid_units = array_keys( sfiler_get_interval_units() );

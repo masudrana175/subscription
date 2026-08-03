@@ -27,15 +27,36 @@ class Sfiler_Cron {
 	}
 
 	public static function process_single_renewal( $subscription ) {
-		try {
-			Sfiler_Stripe::charge_renewal( $subscription );
+		$order = Sfiler_Order::create_renewal_order( $subscription );
 
-			$order = Sfiler_Order::create_renewal_order( $subscription );
-			$order->payment_complete();
+		if ( is_wp_error( $order ) ) {
+			// No order to charge against or record the failure on — bail without
+			// touching Stripe, and leave the subscription due so the next cron
+			// run tries again.
+			Sfiler_Subscription::add_note( $subscription->id, sprintf( __( 'Could not create renewal order: %s', 'subscript-filter' ), $order->get_error_message() ) );
+			return;
+		}
+
+		// Stable per billing-cycle: a retried cron run (or a request that
+		// succeeded at Stripe but failed before we recorded it) reuses this
+		// order's ID and gets the same PaymentIntent back instead of a new charge.
+		$idempotency_key = 'sfiler_renewal_' . $subscription->id . '_' . $order->get_id();
+
+		try {
+			$intent = Sfiler_Stripe::charge_renewal( $subscription, $idempotency_key );
+
+			$order->add_meta_data( '_sfiler_payment_intent_id', isset( $intent['id'] ) ? $intent['id'] : '', true );
+			$order->save();
+			$order->payment_complete( isset( $intent['id'] ) ? $intent['id'] : '' );
 
 			Sfiler_Subscription::record_payment_success( $subscription->id, $order->get_id() );
-			Sfiler_Emails::send_renewal_success( $subscription, $order );
+			// Re-fetch: record_payment_success() just advanced next_payment_date,
+			// and the email should show that new date, not the one that was
+			// just due (which is still on the $subscription object passed in).
+			Sfiler_Emails::send_renewal_success( Sfiler_Subscription::get( $subscription->id ), $order );
 		} catch ( Exception $e ) {
+			$order->update_status( 'failed', $e->getMessage() );
+
 			Sfiler_Subscription::record_payment_failure( $subscription->id, $e->getMessage() );
 			Sfiler_Emails::send_renewal_failed( $subscription, $e->getMessage() );
 		}

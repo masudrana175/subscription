@@ -34,10 +34,20 @@ class Sfiler_Frontend {
 			return;
 		}
 
-		$product_id = $product->get_id();
-		$discount   = Sfiler_Product::get_discount_percent( $product_id );
+		$product_id  = $product->get_id();
+		$discount    = Sfiler_Product::get_discount_percent( $product_id );
 		$frequencies = Sfiler_Product::get_frequencies( $product_id );
-		$regular_price = (float) $product->get_price();
+
+		// The subscription discount is always computed off the regular
+		// (list) price, matching how the cart prices it — never off a
+		// temporary sale price, which would make the subscribe price
+		// silently fluctuate whenever the store runs a one-time sale, and
+		// which would otherwise mismatch what checkout actually charges.
+		// Variable products may not have a single regular price until a
+		// variation is picked; fall back to get_price() for that initial
+		// render, the JS variation handler corrects it once one is chosen.
+		$regular_price = $product->get_regular_price();
+		$regular_price = ( '' !== $regular_price ) ? (float) $regular_price : (float) $product->get_price();
 
 		include SFILER_PLUGIN_DIR . 'templates/frontend/purchase-options.php';
 	}

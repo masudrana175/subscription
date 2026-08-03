@@ -47,7 +47,7 @@ class Sfiler_Emails {
 			$subscription->product_name,
 			$order->get_id(),
 			wc_price( $subscription->line_total, array( 'currency' => $subscription->currency ) ),
-			date_i18n( get_option( 'date_format' ), strtotime( $subscription->next_payment_date ) + 1 )
+			date_i18n( get_option( 'date_format' ), strtotime( $subscription->next_payment_date ) )
 		);
 
 		wp_mail( $to, $subject, wp_strip_all_tags( $body ) );

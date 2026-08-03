@@ -1,12 +1,6 @@
 ( function ( $ ) {
 	'use strict';
 
-	function formatPrice( amount, priceHtml ) {
-		var $tmp = $( '<div>' ).html( priceHtml );
-		var symbol = $tmp.text().replace( /[0-9.,\s]/g, '' ).trim();
-		return symbol + amount.toFixed( 2 );
-	}
-
 	function updatePrices( $wrapper, regularPrice ) {
 		var discount = parseFloat( $wrapper.data( 'discount' ) ) || 0;
 		var subscribePrice = regularPrice * ( 1 - discount / 100 );
@@ -26,9 +20,14 @@
 		}
 
 		$( '.variations_form' ).on( 'found_variation', function ( event, variation ) {
-			if ( variation && variation.display_price ) {
-				$wrapper.data( 'regular-price', variation.display_price );
-				updatePrices( $wrapper, parseFloat( variation.display_price ) );
+			// Use the variation's regular (list) price, not its current
+			// display_price — the discount is meant to be a stable percentage
+			// off list price, matching how the cart prices it server-side,
+			// not off whatever sale price happens to be active.
+			var price = variation && ( variation.display_regular_price || variation.display_price );
+			if ( price ) {
+				$wrapper.data( 'regular-price', price );
+				updatePrices( $wrapper, parseFloat( price ) );
 			}
 		} );
 

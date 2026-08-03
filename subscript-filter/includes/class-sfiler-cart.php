@@ -85,7 +85,13 @@ class Sfiler_Cart {
 
 			$discount = (float) $cart_item[ self::CART_ITEM_KEY ]['discount_percent'];
 			$product  = $cart_item['data'];
-			$price    = (float) $product->get_price();
+
+			// woocommerce_before_calculate_totals can fire more than once per
+			// request (page load, then an AJAX cart update). Always discount
+			// from the stable regular price, never from get_price(), which
+			// this method may have already mutated on an earlier firing —
+			// otherwise the discount compounds on every extra call.
+			$price = (float) $product->get_regular_price();
 
 			$product->set_price( round( $price * ( 1 - ( $discount / 100 ) ), wc_get_price_decimals() ) );
 		}

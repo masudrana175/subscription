@@ -178,7 +178,7 @@ class Sfiler_My_Account {
 		$units       = sfiler_get_interval_units();
 		$orders      = Sfiler_Order::get_orders_for_subscription( $subscription_id );
 		$frequencies = Sfiler_Product::get_frequencies( $subscription->product_id );
-		$tokens      = class_exists( 'WC_Payment_Tokens' ) ? WC_Payment_Tokens::get_customer_tokens( get_current_user_id(), 'stripe' ) : array();
+		$tokens      = Sfiler_Stripe::get_customer_stripe_tokens( get_current_user_id() );
 
 		include SFILER_PLUGIN_DIR . 'templates/myaccount/subscription-view.php';
 	}

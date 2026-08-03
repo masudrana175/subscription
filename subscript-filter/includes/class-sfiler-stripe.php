@@ -146,14 +146,30 @@ class Sfiler_Stripe {
 		return $stripe_customer_id;
 	}
 
-	private static function find_stripe_token( $customer_id ) {
-		$all_tokens = WC_Payment_Tokens::get_customer_tokens( $customer_id );
-		$stripe_tokens = array_filter(
-			$all_tokens,
+	/**
+	 * All of a customer's saved Stripe-family tokens, regardless of which
+	 * per-method gateway ID created them (stripe_cc, stripe_applepay, ...).
+	 * WC_Payment_Tokens::get_customer_tokens( $id, 'stripe' ) filters on an
+	 * exact gateway ID match, which misses all of these — this plugin never
+	 * registers a bare "stripe" gateway.
+	 *
+	 * @return WC_Payment_Token[]
+	 */
+	public static function get_customer_stripe_tokens( $customer_id ) {
+		if ( ! class_exists( 'WC_Payment_Tokens' ) ) {
+			return array();
+		}
+
+		return array_filter(
+			WC_Payment_Tokens::get_customer_tokens( $customer_id ),
 			function ( $token ) {
 				return false !== stripos( $token->get_gateway_id(), 'stripe' );
 			}
 		);
+	}
+
+	private static function find_stripe_token( $customer_id ) {
+		$stripe_tokens = self::get_customer_stripe_tokens( $customer_id );
 
 		return ! empty( $stripe_tokens ) ? end( $stripe_tokens ) : null;
 	}
@@ -191,8 +207,14 @@ class Sfiler_Stripe {
 	/**
 	 * Charge a subscription renewal off-session. Returns the Stripe PaymentIntent
 	 * array on success, or throws an Exception with the Stripe error message on failure.
+	 *
+	 * $idempotency_key should be stable for a given subscription + billing cycle
+	 * (e.g. derived from the renewal order ID). If the HTTP request fails after
+	 * Stripe already processed it, or this method is called again for the same
+	 * cycle (cron overlap, a failed follow-up step retried), Stripe returns the
+	 * original result instead of creating a second charge.
 	 */
-	public static function charge_renewal( $subscription ) {
+	public static function charge_renewal( $subscription, $idempotency_key = '' ) {
 		$secret_key = self::get_secret_key();
 
 		if ( empty( $secret_key ) ) {
@@ -216,13 +238,19 @@ class Sfiler_Stripe {
 			'metadata[sfiler_subscription_id]'  => $subscription->id,
 		);
 
+		$headers = array(
+			'Authorization' => 'Bearer ' . $secret_key,
+			'Content-Type'  => 'application/x-www-form-urlencoded',
+		);
+
+		if ( $idempotency_key ) {
+			$headers['Idempotency-Key'] = $idempotency_key;
+		}
+
 		$response = wp_remote_post(
 			self::API_BASE . '/payment_intents',
 			array(
-				'headers' => array(
-					'Authorization' => 'Bearer ' . $secret_key,
-					'Content-Type'  => 'application/x-www-form-urlencoded',
-				),
+				'headers' => $headers,
 				'body'    => $body,
 				'timeout' => 30,
 			)

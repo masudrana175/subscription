@@ -226,10 +226,14 @@ class Sfiler_Subscription {
 		}
 
 		if ( ! empty( $args['search'] ) ) {
-			$like              = '%' . $wpdb->esc_like( $args['search'] ) . '%';
-			$matching_users    = get_users(
+			$like = '%' . $wpdb->esc_like( $args['search'] ) . '%';
+
+			// WP_User_Query's "search" uses "*" as its wildcard character, not
+			// SQL's "%" — passing a LIKE-style string here would search for
+			// that literal string and never match a real user.
+			$matching_users = get_users(
 				array(
-					'search'         => $like,
+					'search'         => '*' . $args['search'] . '*',
 					'search_columns' => array( 'user_login', 'user_email', 'display_name' ),
 					'fields'         => 'ID',
 				)
