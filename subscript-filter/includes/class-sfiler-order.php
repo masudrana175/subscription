@@ -41,7 +41,7 @@ class Sfiler_Order {
 			return;
 		}
 
-		$payment_method = Sfiler_Stripe::get_customer_payment_method( $customer_id );
+		$payment_method = Sfiler_Stripe::get_order_payment_method( $order );
 
 		$interval_count = (int) $item->get_meta( '_sfiler_interval_count' );
 		$interval_unit  = $item->get_meta( '_sfiler_interval_unit' );

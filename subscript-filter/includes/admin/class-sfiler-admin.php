@@ -179,20 +179,26 @@ class Sfiler_Admin {
 				<?php wp_nonce_field( 'sfiler_save_settings' ); ?>
 
 				<h2><?php esc_html_e( 'Stripe API', 'subscript-filter' ); ?></h2>
-				<p class="description">
-					<?php esc_html_e( 'Renewals are charged directly through the Stripe API, independently of whichever WooCommerce Stripe checkout plugin (e.g. Payment Plugins for Stripe WooCommerce) handles your storefront checkout. Enter the secret key(s) from your Stripe Dashboard > Developers > API keys.', 'subscript-filter' ); ?>
-				</p>
+				<?php if ( Sfiler_Stripe::payment_plugins_stripe_active() ) : ?>
+					<p class="description" style="color:#1a7f37;">
+						<?php esc_html_e( '"Payment Plugins for Stripe WooCommerce" was detected. Subscript Filter automatically uses its configured secret key and mode (test/live) — you do not need to fill in the fields below unless that plugin is deactivated or you want to override it.', 'subscript-filter' ); ?>
+					</p>
+				<?php else : ?>
+					<p class="description">
+						<?php esc_html_e( 'Renewals are charged directly through the Stripe API. Enter the secret key(s) from your Stripe Dashboard > Developers > API keys — this must be the same Stripe account your storefront checkout plugin uses.', 'subscript-filter' ); ?>
+					</p>
+				<?php endif; ?>
 				<table class="form-table">
 					<tr>
 						<th><label for="sfiler_stripe_test_mode"><?php esc_html_e( 'Use test mode', 'subscript-filter' ); ?></label></th>
-						<td><input type="checkbox" id="sfiler_stripe_test_mode" name="sfiler_stripe_test_mode" value="yes" <?php checked( $test_mode, 'yes' ); ?> /></td>
+						<td><input type="checkbox" id="sfiler_stripe_test_mode" name="sfiler_stripe_test_mode" value="yes" <?php checked( $test_mode, 'yes' ); ?> /> <span class="description"><?php esc_html_e( 'Only used when the fallback keys below are active.', 'subscript-filter' ); ?></span></td>
 					</tr>
 					<tr>
-						<th><label for="sfiler_stripe_test_secret_key"><?php esc_html_e( 'Test secret key', 'subscript-filter' ); ?></label></th>
+						<th><label for="sfiler_stripe_test_secret_key"><?php esc_html_e( 'Fallback test secret key', 'subscript-filter' ); ?></label></th>
 						<td><input type="password" autocomplete="off" class="regular-text" id="sfiler_stripe_test_secret_key" name="sfiler_stripe_test_secret_key" value="<?php echo esc_attr( $test_secret ); ?>" placeholder="sk_test_..." /></td>
 					</tr>
 					<tr>
-						<th><label for="sfiler_stripe_live_secret_key"><?php esc_html_e( 'Live secret key', 'subscript-filter' ); ?></label></th>
+						<th><label for="sfiler_stripe_live_secret_key"><?php esc_html_e( 'Fallback live secret key', 'subscript-filter' ); ?></label></th>
 						<td><input type="password" autocomplete="off" class="regular-text" id="sfiler_stripe_live_secret_key" name="sfiler_stripe_live_secret_key" value="<?php echo esc_attr( $live_secret ); ?>" placeholder="sk_live_..." /></td>
 					</tr>
 				</table>

@@ -8,18 +8,34 @@ if ( ! defined( 'ABSPATH' ) ) {
  * payment methods off-session for renewals. Card and Apple Pay both end up
  * stored as reusable Stripe payment methods, so both renew the same way.
  *
- * The secret key is configured on Subscript Filter's own Settings page
- * rather than read from another gateway plugin's private option storage,
- * so this works the same regardless of which Stripe checkout plugin the
- * store uses (official WooCommerce Stripe Gateway, Payment Plugins for
- * Stripe WooCommerce, etc.) — those plugins use different option names
- * and gateway IDs internally, and are not a stable thing to depend on.
+ * "Payment Plugins for Stripe WooCommerce" (woo-stripe-payment) exposes its
+ * own public helper functions for exactly this — wc_stripe_get_secret_key()
+ * and wc_stripe_get_customer_id() — which read its real settings/user-meta
+ * storage directly, so we call those when the plugin is active instead of
+ * guessing at option names. Subscript Filter's own Settings page (test/live
+ * secret key) is kept as a fallback for stores running a different Stripe
+ * checkout plugin, or if those functions aren't available for any reason.
+ *
+ * Saved payment method tokens are read via WC_Payment_Tokens (WooCommerce
+ * core), matching any gateway ID containing "stripe" — this plugin registers
+ * per-method gateway IDs like stripe_cc, stripe_applepay, stripe_googlepay.
  */
 class Sfiler_Stripe {
 
 	const API_BASE = 'https://api.stripe.com/v1';
 
+	public static function payment_plugins_stripe_active() {
+		return function_exists( 'wc_stripe_get_secret_key' );
+	}
+
 	public static function get_secret_key() {
+		if ( self::payment_plugins_stripe_active() ) {
+			$key = wc_stripe_get_secret_key();
+			if ( ! empty( $key ) ) {
+				return $key;
+			}
+		}
+
 		$testmode = 'yes' === get_option( 'sfiler_stripe_test_mode', 'no' );
 
 		if ( $testmode ) {
@@ -34,11 +50,43 @@ class Sfiler_Stripe {
 	}
 
 	/**
-	 * Determine the reusable Stripe payment method attached to a customer,
-	 * regardless of which Stripe checkout plugin created it. WC_Payment_Tokens
-	 * is WooCommerce core, so any compliant gateway (including Apple Pay /
-	 * Google Pay flows, which Stripe also tokenizes as a card) stores its
-	 * saved methods there.
+	 * Determine the payment method + customer that should be charged for
+	 * renewals on a specific order. This is the preferred path when an
+	 * initial order is available: "Payment Plugins for Stripe WooCommerce"
+	 * (v3+) stores the exact payment method and customer used on that order
+	 * as order meta (WC_Stripe_Constants::PAYMENT_METHOD_TOKEN /
+	 * ::CUSTOMER_ID) — its own WooCommerce-Subscriptions renewal handler
+	 * reads the same fields for the same reason: a customer can have
+	 * multiple saved cards, so the token used for *this* order isn't
+	 * necessarily their current default one.
+	 *
+	 * @return array{stripe_customer_id:string,payment_method_id:string}
+	 */
+	public static function get_order_payment_method( $order ) {
+		if ( class_exists( 'WC_Stripe_Constants' ) ) {
+			$payment_method_id  = trim( (string) $order->get_meta( WC_Stripe_Constants::PAYMENT_METHOD_TOKEN ) );
+			$stripe_customer_id = trim( (string) $order->get_meta( WC_Stripe_Constants::CUSTOMER_ID ) );
+
+			if ( $payment_method_id ) {
+				if ( ! $stripe_customer_id ) {
+					$stripe_customer_id = self::fetch_payment_method_customer( $payment_method_id );
+				}
+
+				return array(
+					'stripe_customer_id' => $stripe_customer_id,
+					'payment_method_id'  => $payment_method_id,
+				);
+			}
+		}
+
+		return self::get_customer_payment_method( $order->get_customer_id() );
+	}
+
+	/**
+	 * Fallback: determine the reusable Stripe payment method attached to a
+	 * customer (their current default/most recent saved method), regardless
+	 * of which Stripe checkout plugin created it. Used when no specific
+	 * order is available (e.g. an admin manually creating a subscription).
 	 *
 	 * @return array{stripe_customer_id:string,payment_method_id:string}
 	 */
@@ -58,7 +106,11 @@ class Sfiler_Stripe {
 			}
 		}
 
-		if ( $payment_method_id ) {
+		if ( self::payment_plugins_stripe_active() ) {
+			$stripe_customer_id = wc_stripe_get_customer_id( $customer_id );
+		}
+
+		if ( ! $stripe_customer_id && $payment_method_id ) {
 			$stripe_customer_id = self::fetch_payment_method_customer( $payment_method_id );
 		}
 
@@ -73,11 +125,18 @@ class Sfiler_Stripe {
 	}
 
 	/**
-	 * Resolve the Stripe customer ID attached to a specific WC_Payment_Token,
-	 * regardless of which plugin created it. Used when a customer explicitly
-	 * picks a saved payment method to attach to a subscription.
+	 * Resolve the Stripe customer ID attached to a specific WC_Payment_Token.
+	 * Used when a customer explicitly picks a saved payment method to attach
+	 * to a subscription.
 	 */
 	public static function resolve_customer_for_token( $token ) {
+		if ( self::payment_plugins_stripe_active() ) {
+			$stripe_customer_id = wc_stripe_get_customer_id( $token->get_user_id() );
+			if ( ! empty( $stripe_customer_id ) ) {
+				return $stripe_customer_id;
+			}
+		}
+
 		$stripe_customer_id = self::fetch_payment_method_customer( $token->get_token() );
 
 		if ( ! $stripe_customer_id ) {

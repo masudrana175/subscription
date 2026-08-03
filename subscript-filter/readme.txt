@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 
 Adds subscribe-and-save recurring purchasing to existing WooCommerce simple
@@ -28,11 +28,15 @@ same way a saved card does.
 
 * WooCommerce
 * A Stripe checkout plugin that saves reusable payment methods for logged-in
-  customers (tested against Payment Plugins for Stripe WooCommerce; also
-  works with the official WooCommerce Stripe Payment Gateway). Subscript
-  Filter does not read that plugin's settings — it charges renewals through
-  its own Stripe API key, configured on Subscript Filter > Settings, so it
-  is not tied to any single checkout plugin's internal option names.
+  customers. Verified against "Payment Plugins for Stripe WooCommerce"
+  (woo-stripe-payment) v4.0.8 — when active, Subscript Filter automatically
+  uses its wc_stripe_get_secret_key() / wc_stripe_get_customer_id() helpers
+  and reads the exact payment method used on each order via its
+  WC_Stripe_Constants::PAYMENT_METHOD_TOKEN / ::CUSTOMER_ID order meta (the
+  same fields that plugin's own WooCommerce-Subscriptions renewal handler
+  reads). Falls back to a manually-entered Stripe secret key (Subscript
+  Filter > Settings) and WC_Payment_Tokens lookups for any other Stripe
+  checkout plugin, including the official WooCommerce Stripe Gateway.
 * The Stripe secret key entered in Settings must belong to the same Stripe
   account your storefront checkout uses (customers/payment methods are
   account-scoped).
@@ -96,6 +100,21 @@ Admin (Subscript Filter menu)
 * Warning banner if the Stripe gateway's "Saved cards" option is off.
 
 == Changelog ==
+
+= 1.3.0 =
+* Verified integration against the real "Payment Plugins for Stripe
+  WooCommerce" (woo-stripe-payment) v4.0.8 source. Renewals now read the
+  exact payment method + Stripe customer used on the subscription's
+  initial order (WC_Stripe_Constants::PAYMENT_METHOD_TOKEN / ::CUSTOMER_ID
+  order meta) instead of guessing from the customer's current default
+  saved card, matching how that plugin's own WooCommerce-Subscriptions
+  renewal handler resolves the same data.
+* Secret key / customer ID now come from that plugin's own
+  wc_stripe_get_secret_key() / wc_stripe_get_customer_id() helper
+  functions when it's active, with Subscript Filter's manual settings kept
+  as a fallback for any other Stripe checkout plugin.
+* Settings page shows a green confirmation when the plugin is detected and
+  labels the manual key fields as a fallback rather than the primary path.
 
 = 1.2.0 =
 * Stripe secret key is now configured directly on Subscript Filter's own
