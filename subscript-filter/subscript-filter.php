@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Subscript Filter
  * Description: Adds recurring subscription purchasing to WooCommerce simple and variable products, with Stripe (card and Apple Pay) off-session renewal billing.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Design Filters
  * Text Domain: subscript-filter
  * Requires Plugins: woocommerce
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SFILER_VERSION', '1.0.0' );
+define( 'SFILER_VERSION', '1.1.0' );
 define( 'SFILER_PLUGIN_FILE', __FILE__ );
 define( 'SFILER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFILER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -37,6 +37,7 @@ function sfiler_init() {
 		return;
 	}
 
+	require_once SFILER_PLUGIN_DIR . 'includes/class-sfiler-helpers.php';
 	require_once SFILER_PLUGIN_DIR . 'includes/class-sfiler-subscription.php';
 	require_once SFILER_PLUGIN_DIR . 'includes/class-sfiler-product.php';
 	require_once SFILER_PLUGIN_DIR . 'includes/class-sfiler-frontend.php';
@@ -48,9 +49,11 @@ function sfiler_init() {
 	require_once SFILER_PLUGIN_DIR . 'includes/class-sfiler-my-account.php';
 
 	if ( is_admin() ) {
-		require_once SFILER_PLUGIN_DIR . 'includes/class-sfiler-admin.php';
-		require_once SFILER_PLUGIN_DIR . 'includes/class-sfiler-admin-list-table.php';
+		require_once SFILER_PLUGIN_DIR . 'includes/admin/class-sfiler-admin-list-table.php';
+		require_once SFILER_PLUGIN_DIR . 'includes/admin/class-sfiler-admin-export.php';
+		require_once SFILER_PLUGIN_DIR . 'includes/admin/class-sfiler-admin.php';
 		Sfiler_Admin::init();
+		Sfiler_Admin_Export::init();
 	}
 
 	Sfiler_Product::init();
@@ -64,22 +67,4 @@ function sfiler_init() {
 
 function sfiler_missing_wc_notice() {
 	echo '<div class="notice notice-error"><p>' . esc_html__( 'Subscript Filter requires WooCommerce to be installed and active.', 'subscript-filter' ) . '</p></div>';
-}
-
-/**
- * Shared helper: interval unit choices used by product settings, cron math, and templates.
- */
-function sfiler_get_interval_units() {
-	return array(
-		'day'   => __( 'Day(s)', 'subscript-filter' ),
-		'week'  => __( 'Week(s)', 'subscript-filter' ),
-		'month' => __( 'Month(s)', 'subscript-filter' ),
-		'year'  => __( 'Year(s)', 'subscript-filter' ),
-	);
-}
-
-function sfiler_calculate_next_payment_date( $from_timestamp, $interval_count, $interval_unit ) {
-	$interval_count = max( 1, (int) $interval_count );
-	$modifier       = '+' . $interval_count . ' ' . $interval_unit;
-	return date( 'Y-m-d H:i:s', strtotime( $modifier, (int) $from_timestamp ) );
 }

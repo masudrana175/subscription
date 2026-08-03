@@ -4,7 +4,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * "Subscriptions" tab under My Account: list, cancel, and pause/resume.
+ * "Subscriptions" tab under My Account: list, detail view, and self-service
+ * actions (pause, resume/reactivate, cancel, change frequency, change payment method).
  */
 class Sfiler_My_Account {
 
@@ -34,46 +35,151 @@ class Sfiler_My_Account {
 		return $new_items;
 	}
 
-	public static function handle_actions() {
-		if ( ! is_user_logged_in() || empty( $_GET['sfiler_action'] ) || empty( $_GET['subscription_id'] ) ) {
-			return;
-		}
-
-		$subscription_id = absint( $_GET['subscription_id'] );
-		$action          = sanitize_text_field( wp_unslash( $_GET['sfiler_action'] ) );
-
-		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'sfiler_action_' . $subscription_id ) ) {
-			return;
-		}
-
+	private static function get_owned_subscription( $subscription_id ) {
 		$subscription = Sfiler_Subscription::get( $subscription_id );
 
 		if ( ! $subscription || (int) $subscription->customer_id !== get_current_user_id() ) {
+			return null;
+		}
+
+		return $subscription;
+	}
+
+	public static function handle_actions() {
+		if ( ! is_user_logged_in() || empty( $_REQUEST['sfiler_action'] ) || empty( $_REQUEST['subscription_id'] ) ) {
 			return;
 		}
+
+		$subscription_id = absint( $_REQUEST['subscription_id'] );
+		$action          = sanitize_text_field( wp_unslash( $_REQUEST['sfiler_action'] ) );
+
+		if ( ! isset( $_REQUEST['_wpnonce'] ) || ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'sfiler_action_' . $subscription_id ) ) {
+			return;
+		}
+
+		$subscription = self::get_owned_subscription( $subscription_id );
+
+		if ( ! $subscription ) {
+			return;
+		}
+
+		$redirect = wc_get_account_endpoint_url( self::ENDPOINT );
 
 		switch ( $action ) {
 			case 'cancel':
 				Sfiler_Subscription::cancel( $subscription_id );
 				wc_add_notice( __( 'Subscription cancelled.', 'subscript-filter' ) );
 				break;
+
 			case 'pause':
 				Sfiler_Subscription::pause( $subscription_id );
 				wc_add_notice( __( 'Subscription paused.', 'subscript-filter' ) );
+				$redirect = self::get_view_url( $subscription_id );
 				break;
+
 			case 'resume':
+			case 'reactivate':
 				Sfiler_Subscription::resume( $subscription_id );
-				wc_add_notice( __( 'Subscription resumed.', 'subscript-filter' ) );
+				wc_add_notice( __( 'Subscription reactivated.', 'subscript-filter' ) );
+				$redirect = self::get_view_url( $subscription_id );
+				break;
+
+			case 'change_frequency':
+				self::change_frequency( $subscription );
+				$redirect = self::get_view_url( $subscription_id );
+				break;
+
+			case 'change_payment_method':
+				self::change_payment_method( $subscription );
+				$redirect = self::get_view_url( $subscription_id );
 				break;
 		}
 
-		wp_safe_redirect( wc_get_account_endpoint_url( self::ENDPOINT ) );
+		wp_safe_redirect( $redirect );
 		exit;
 	}
 
+	private static function change_frequency( $subscription ) {
+		if ( empty( $_POST['frequency_index'] ) && '0' !== (string) ( $_POST['frequency_index'] ?? '' ) ) {
+			return;
+		}
+
+		$frequencies = Sfiler_Product::get_frequencies( $subscription->product_id );
+		$index       = absint( $_POST['frequency_index'] );
+
+		if ( ! isset( $frequencies[ $index ] ) ) {
+			return;
+		}
+
+		Sfiler_Subscription::update(
+			$subscription->id,
+			array(
+				'interval_count' => $frequencies[ $index ]['count'],
+				'interval_unit'  => $frequencies[ $index ]['unit'],
+			)
+		);
+
+		Sfiler_Subscription::add_note(
+			$subscription->id,
+			sprintf( __( 'Customer changed billing frequency to %s.', 'subscript-filter' ), sfiler_format_interval( $frequencies[ $index ]['count'], $frequencies[ $index ]['unit'] ) )
+		);
+
+		wc_add_notice( __( 'Billing frequency updated. This takes effect on your next renewal.', 'subscript-filter' ) );
+	}
+
+	private static function change_payment_method( $subscription ) {
+		if ( empty( $_POST['payment_token_id'] ) ) {
+			return;
+		}
+
+		$token = WC_Payment_Tokens::get( absint( $_POST['payment_token_id'] ) );
+
+		if ( ! $token || (int) $token->get_user_id() !== get_current_user_id() ) {
+			return;
+		}
+
+		$stripe_customer_id = get_user_meta( get_current_user_id(), '_stripe_customer_id', true );
+
+		Sfiler_Subscription::update(
+			$subscription->id,
+			array(
+				'stripe_customer_id'       => $stripe_customer_id,
+				'stripe_payment_method_id' => $token->get_token(),
+			)
+		);
+
+		Sfiler_Subscription::add_note( $subscription->id, __( 'Customer updated the saved payment method for this subscription.', 'subscript-filter' ) );
+		wc_add_notice( __( 'Payment method updated.', 'subscript-filter' ) );
+	}
+
+	public static function get_view_url( $subscription_id ) {
+		return add_query_arg( 'id', $subscription_id, wc_get_account_endpoint_url( self::ENDPOINT ) );
+	}
+
 	public static function render_endpoint() {
+		if ( ! empty( $_GET['id'] ) ) {
+			self::render_detail( absint( $_GET['id'] ) );
+			return;
+		}
+
 		$subscriptions = Sfiler_Subscription::get_for_customer( get_current_user_id() );
 		$units         = sfiler_get_interval_units();
-		include SFILER_PLUGIN_DIR . 'templates/my-account-subscriptions.php';
+		include SFILER_PLUGIN_DIR . 'templates/myaccount/subscriptions.php';
+	}
+
+	private static function render_detail( $subscription_id ) {
+		$subscription = self::get_owned_subscription( $subscription_id );
+
+		if ( ! $subscription ) {
+			echo '<p>' . esc_html__( 'Subscription not found.', 'subscript-filter' ) . '</p>';
+			return;
+		}
+
+		$units       = sfiler_get_interval_units();
+		$orders      = Sfiler_Order::get_orders_for_subscription( $subscription_id );
+		$frequencies = Sfiler_Product::get_frequencies( $subscription->product_id );
+		$tokens      = class_exists( 'WC_Payment_Tokens' ) ? WC_Payment_Tokens::get_customer_tokens( get_current_user_id(), 'stripe' ) : array();
+
+		include SFILER_PLUGIN_DIR . 'templates/myaccount/subscription-view.php';
 	}
 }

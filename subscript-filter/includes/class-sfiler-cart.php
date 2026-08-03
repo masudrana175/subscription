@@ -15,6 +15,7 @@ class Sfiler_Cart {
 		add_filter( 'woocommerce_add_cart_item_data', array( __CLASS__, 'add_cart_item_data' ), 10, 3 );
 		add_filter( 'woocommerce_get_item_data', array( __CLASS__, 'render_cart_item_data' ), 10, 2 );
 		add_action( 'woocommerce_before_calculate_totals', array( __CLASS__, 'apply_subscription_price' ) );
+		add_action( 'woocommerce_cart_calculate_fees', array( __CLASS__, 'apply_signup_fees' ) );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( __CLASS__, 'save_order_item_meta' ), 10, 4 );
 	}
 
@@ -34,10 +35,11 @@ class Sfiler_Cart {
 		$frequency       = isset( $frequencies[ $frequency_index ] ) ? $frequencies[ $frequency_index ] : $frequencies[0];
 
 		$cart_item_data[ self::CART_ITEM_KEY ] = array(
-			'is_subscription' => true,
+			'is_subscription'  => true,
 			'discount_percent' => Sfiler_Product::get_discount_percent( $product_id ),
-			'interval_count'  => $frequency['count'],
-			'interval_unit'   => $frequency['unit'],
+			'signup_fee'       => Sfiler_Product::get_signup_fee( $product_id ),
+			'interval_count'   => $frequency['count'],
+			'interval_unit'    => $frequency['unit'],
 		);
 
 		return $cart_item_data;
@@ -61,6 +63,13 @@ class Sfiler_Cart {
 			),
 		);
 
+		if ( ! empty( $sub['signup_fee'] ) ) {
+			$item_data[] = array(
+				'key'   => __( 'Sign-up fee', 'subscript-filter' ),
+				'value' => wp_strip_all_tags( wc_price( $sub['signup_fee'] ) ),
+			);
+		}
+
 		return $item_data;
 	}
 
@@ -82,6 +91,29 @@ class Sfiler_Cart {
 		}
 	}
 
+	public static function apply_signup_fees( $cart ) {
+		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+			return;
+		}
+
+		$total_fee = 0.0;
+
+		foreach ( $cart->get_cart() as $cart_item ) {
+			if ( empty( $cart_item[ self::CART_ITEM_KEY ]['is_subscription'] ) ) {
+				continue;
+			}
+
+			$fee = (float) $cart_item[ self::CART_ITEM_KEY ]['signup_fee'];
+			if ( $fee > 0 ) {
+				$total_fee += $fee * $cart_item['quantity'];
+			}
+		}
+
+		if ( $total_fee > 0 ) {
+			$cart->add_fee( __( 'Sign-up fee', 'subscript-filter' ), $total_fee, false );
+		}
+	}
+
 	public static function save_order_item_meta( $item, $cart_item_key, $values, $order ) {
 		if ( empty( $values[ self::CART_ITEM_KEY ]['is_subscription'] ) ) {
 			return;
@@ -93,5 +125,6 @@ class Sfiler_Cart {
 		$item->add_meta_data( '_sfiler_interval_count', $sub['interval_count'], true );
 		$item->add_meta_data( '_sfiler_interval_unit', $sub['interval_unit'], true );
 		$item->add_meta_data( '_sfiler_discount_percent', $sub['discount_percent'], true );
+		$item->add_meta_data( '_sfiler_signup_fee', $sub['signup_fee'], true );
 	}
 }

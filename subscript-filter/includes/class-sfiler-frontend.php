@@ -39,6 +39,6 @@ class Sfiler_Frontend {
 		$frequencies = Sfiler_Product::get_frequencies( $product_id );
 		$regular_price = (float) $product->get_price();
 
-		include SFILER_PLUGIN_DIR . 'templates/purchase-options.php';
+		include SFILER_PLUGIN_DIR . 'templates/frontend/purchase-options.php';
 	}
 }

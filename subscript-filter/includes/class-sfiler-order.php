@@ -73,6 +73,18 @@ class Sfiler_Order {
 		}
 	}
 
+	public static function get_orders_for_subscription( $subscription_id ) {
+		return wc_get_orders(
+			array(
+				'limit'      => -1,
+				'orderby'    => 'date',
+				'order'      => 'DESC',
+				'meta_key'   => '_sfiler_subscription_id',
+				'meta_value' => $subscription_id,
+			)
+		);
+	}
+
 	public static function create_renewal_order( $subscription ) {
 		$order = wc_create_order(
 			array(

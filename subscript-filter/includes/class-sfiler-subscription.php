@@ -190,4 +190,73 @@ class Sfiler_Subscription {
 		$table = self::table();
 		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE status = %s", $status ) );
 	}
+
+	public static function count_all() {
+		global $wpdb;
+		$table = self::table();
+		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+	}
+
+	/**
+	 * Filtered, searched, paginated query used by the admin list table.
+	 *
+	 * @param array $args status, search, per_page, page.
+	 * @return array{items:array,total:int}
+	 */
+	public static function query( $args ) {
+		global $wpdb;
+
+		$args = wp_parse_args(
+			$args,
+			array(
+				'status'   => '',
+				'search'   => '',
+				'per_page' => 20,
+				'page'     => 1,
+			)
+		);
+
+		$table  = self::table();
+		$where  = array( '1=1' );
+		$params = array();
+
+		if ( ! empty( $args['status'] ) ) {
+			$where[]  = 'status = %s';
+			$params[] = $args['status'];
+		}
+
+		if ( ! empty( $args['search'] ) ) {
+			$like              = '%' . $wpdb->esc_like( $args['search'] ) . '%';
+			$matching_users    = get_users(
+				array(
+					'search'         => $like,
+					'search_columns' => array( 'user_login', 'user_email', 'display_name' ),
+					'fields'         => 'ID',
+				)
+			);
+			$user_ids_sql = ! empty( $matching_users ) ? implode( ',', array_map( 'intval', $matching_users ) ) : '0';
+
+			$where[]  = "(product_name LIKE %s OR customer_id IN ({$user_ids_sql}))";
+			$params[] = $like;
+		}
+
+		$where_sql = implode( ' AND ', $where );
+		$offset    = ( max( 1, (int) $args['page'] ) - 1 ) * (int) $args['per_page'];
+
+		$total_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
+		$items_sql = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY id DESC LIMIT %d OFFSET %d";
+
+		if ( ! empty( $params ) ) {
+			$total = (int) $wpdb->get_var( $wpdb->prepare( $total_sql, $params ) );
+			$items = $wpdb->get_results( $wpdb->prepare( $items_sql, array_merge( $params, array( (int) $args['per_page'], $offset ) ) ) );
+		} else {
+			$total = (int) $wpdb->get_var( $total_sql );
+			$items = $wpdb->get_results( $wpdb->prepare( $items_sql, array( (int) $args['per_page'], $offset ) ) );
+		}
+
+		return array(
+			'items' => $items,
+			'total' => $total,
+		);
+	}
 }

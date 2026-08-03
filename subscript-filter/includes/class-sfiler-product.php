@@ -30,6 +30,7 @@ class Sfiler_Product {
 		$product_id      = $post->ID;
 		$enabled         = get_post_meta( $product_id, '_sfiler_enabled', true );
 		$discount        = get_post_meta( $product_id, '_sfiler_discount_percent', true );
+		$signup_fee      = get_post_meta( $product_id, '_sfiler_signup_fee', true );
 		$frequencies     = get_post_meta( $product_id, '_sfiler_frequencies', true );
 		$frequencies     = is_array( $frequencies ) ? $frequencies : array();
 
@@ -62,6 +63,20 @@ class Sfiler_Product {
 							'step' => '0.01',
 							'min'  => '0',
 							'max'  => '100',
+						),
+					)
+				);
+
+				woocommerce_wp_text_input(
+					array(
+						'id'                => '_sfiler_signup_fee',
+						'label'             => __( 'Sign-up fee', 'subscript-filter' ) . ' (' . get_woocommerce_currency_symbol() . ')',
+						'description'       => __( 'One-time fee charged on the first order only, on top of the subscription price. Leave 0 for none.', 'subscript-filter' ),
+						'type'              => 'number',
+						'value'             => $signup_fee !== '' ? $signup_fee : 0,
+						'custom_attributes' => array(
+							'step' => '0.01',
+							'min'  => '0',
 						),
 					)
 				);
@@ -129,6 +144,10 @@ class Sfiler_Product {
 			update_post_meta( $product_id, '_sfiler_discount_percent', wc_format_decimal( wp_unslash( $_POST['_sfiler_discount_percent'] ) ) );
 		}
 
+		if ( isset( $_POST['_sfiler_signup_fee'] ) ) {
+			update_post_meta( $product_id, '_sfiler_signup_fee', wc_format_decimal( wp_unslash( $_POST['_sfiler_signup_fee'] ) ) );
+		}
+
 		$frequencies = array();
 		if ( isset( $_POST['sfiler_frequency_count'] ) && isset( $_POST['sfiler_frequency_unit'] ) ) {
 			$counts = wp_unslash( $_POST['sfiler_frequency_count'] );
@@ -151,6 +170,11 @@ class Sfiler_Product {
 
 	public static function get_discount_percent( $product_id ) {
 		$value = get_post_meta( $product_id, '_sfiler_discount_percent', true );
+		return $value !== '' ? (float) $value : 0.0;
+	}
+
+	public static function get_signup_fee( $product_id ) {
+		$value = get_post_meta( $product_id, '_sfiler_signup_fee', true );
 		return $value !== '' ? (float) $value : 0.0;
 	}
 

@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 
 Adds subscribe-and-save recurring purchasing to existing WooCommerce simple
@@ -15,8 +15,9 @@ and variable products, billed through the store's existing Stripe gateway
 == Description ==
 
 Subscript Filter lets customers choose between a one-time purchase or a
-recurring subscription (at a configurable discount and frequency) directly
-on the product page, without changing the underlying product catalog.
+recurring subscription (at a configurable discount, sign-up fee, and
+frequency) directly on the product page, without changing the underlying
+product catalog.
 
 Renewals are billed automatically via the Stripe payment method the
 customer saved on their initial order — including Apple Pay, which Stripe
@@ -28,24 +29,78 @@ same way a saved card does.
 * WooCommerce
 * WooCommerce Stripe Payment Gateway (official), configured with "Saved
   cards" / tokenization enabled so a reusable payment method exists to
-  charge for renewals.
+  charge for renewals. The admin screens show a warning banner if this
+  isn't turned on.
+
+= Plugin structure =
+
+	subscript-filter.php              Bootstrap: constants, activation, includes
+	includes/
+	  class-sfiler-helpers.php        Shared helpers (interval units, statuses, date math)
+	  class-sfiler-install.php        Activation: DB tables, default options
+	  class-sfiler-subscription.php   Subscription data model / CRUD / queries
+	  class-sfiler-product.php        Product data tab (enable, discount, sign-up fee, frequencies)
+	  class-sfiler-frontend.php       Enqueues assets, renders the purchase-options box
+	  class-sfiler-cart.php           Cart pricing, sign-up fees, order line item meta
+	  class-sfiler-order.php          Creates subscriptions from paid orders, builds renewal orders
+	  class-sfiler-stripe.php         Stripe REST API calls (customer token lookup, off-session charge)
+	  class-sfiler-cron.php           Daily renewal + reminder engine
+	  class-sfiler-emails.php         Renewal reminder/success/failure emails
+	  class-sfiler-my-account.php     My Account subscriptions list + detail page + self-service actions
+	  admin/
+	    class-sfiler-admin.php            Admin menu, settings, view/edit/create controllers
+	    class-sfiler-admin-list-table.php Subscriptions list table (filters, search, pagination)
+	    class-sfiler-admin-export.php     CSV export
+	templates/
+	  frontend/purchase-options.php       "Choose how to buy" box
+	  myaccount/subscriptions.php         Customer subscriptions list
+	  myaccount/subscription-view.php     Customer subscription detail + actions
+	  admin/subscription-view.php         Admin subscription detail/edit + activity log
+	  admin/subscription-new.php          Admin manual subscription creation
 
 = Features =
 
-* Per-product subscription toggle, discount percentage, and one or more
-  billing frequencies (Product data > Subscript Filter tab).
+Product & storefront
+* Per-product subscription toggle, discount percentage, sign-up fee, and
+  one or more billing frequencies (Product data > Subscript Filter tab).
 * "Choose how to buy" box on the product page (one-time vs. subscribe &
   save), price and savings calculated live, including on variable products.
-* Subscription record created automatically once the first order is paid.
+
+Billing engine
+* Subscription record created automatically once the first order is paid,
+  capturing the customer's saved Stripe payment method (card or Apple Pay).
 * Daily renewal engine: charges the saved Stripe payment method off-session,
-  creates a WooCommerce renewal order, retries failed payments, and emails
-  the customer at each step.
-* My Account > Subscriptions: customers can view, pause, resume, or cancel
-  their own subscriptions.
-* Admin > Subscript Filter: subscriptions list with manual retry/cancel,
-  plus settings for retry attempts, retry interval, and reminder timing.
+  creates a WooCommerce renewal order, retries failed payments on a
+  configurable schedule, and emails the customer at each step (upcoming
+  reminder, success, failure).
+
+Customer (My Account > Subscriptions)
+* List of all subscriptions with status, amount, frequency, next payment.
+* Detail page per subscription: full order history (initial + renewals),
+  pause / reactivate / cancel, change billing frequency, and switch which
+  saved payment method is charged.
+
+Admin (Subscript Filter menu)
+* Subscriptions list with status filter tabs, search, and pagination.
+* Subscription detail/edit page: adjust amount, interval, next payment
+  date, status, or the linked Stripe IDs; full activity log; linked orders.
+* Manually create a subscription for any customer.
+* Manual "retry charge" / "cancel" actions per subscription.
+* CSV export of all subscriptions.
+* Settings: max retry attempts, retry interval, reminder timing.
+* Warning banner if the Stripe gateway's "Saved cards" option is off.
 
 == Changelog ==
+
+= 1.1.0 =
+* Restructured into includes/ (core) and includes/admin/ (admin-only), with
+  templates split into frontend/myaccount/admin.
+* Added sign-up fee support.
+* Added admin subscription detail/edit page with activity log and linked orders.
+* Added manual subscription creation, CSV export, and list table filters/search.
+* Added customer subscription detail page: order history, reactivate,
+  change frequency, change payment method.
+* Added a Stripe "Saved cards" configuration warning in the admin screens.
 
 = 1.0.0 =
 * Initial release.
