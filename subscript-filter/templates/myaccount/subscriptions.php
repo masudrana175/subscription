@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<td><?php echo wc_price( $subscription->line_total, array( 'currency' => $subscription->currency ) ); ?></td>
 					<td><?php echo esc_html( sfiler_format_interval( $subscription->interval_count, $subscription->interval_unit ) ); ?></td>
 					<td><?php echo esc_html( date_i18n( get_option( 'date_format' ), strtotime( $subscription->next_payment_date ) ) ); ?></td>
-					<td><?php echo esc_html( ucfirst( str_replace( '-', ' ', $subscription->status ) ) ); ?></td>
+					<td><?php echo sfiler_status_badge_html( $subscription->status ); ?></td>
 					<td>
 						<a class="button" href="<?php echo esc_url( Sfiler_My_Account::get_view_url( $subscription->id ) ); ?>"><?php esc_html_e( 'View', 'subscript-filter' ); ?></a>
 					</td>

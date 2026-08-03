@@ -102,7 +102,7 @@ class Sfiler_Admin_List_Table extends WP_List_Table {
 			case 'interval':
 				return esc_html( sfiler_format_interval( $item->interval_count, $item->interval_unit ) );
 			case 'status':
-				return '<span class="sfiler-status sfiler-status-' . esc_attr( $item->status ) . '">' . esc_html( ucfirst( str_replace( '-', ' ', $item->status ) ) ) . '</span>';
+				return sfiler_status_badge_html( $item->status );
 			case 'next_payment':
 				return esc_html( date_i18n( get_option( 'date_format' ), strtotime( $item->next_payment_date ) ) );
 			case 'actions':

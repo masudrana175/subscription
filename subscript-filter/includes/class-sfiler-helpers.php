@@ -42,3 +42,18 @@ function sfiler_format_interval( $count, $unit ) {
 	);
 }
 
+/**
+ * Consistent status pill markup, used on the admin list/detail pages and
+ * the customer's My Account subscriptions pages alike.
+ */
+function sfiler_status_badge_html( $status ) {
+	$statuses = sfiler_get_statuses();
+	$label    = isset( $statuses[ $status ] ) ? $statuses[ $status ] : ucfirst( str_replace( '-', ' ', $status ) );
+
+	return sprintf(
+		'<span class="sfiler-status sfiler-status-%1$s">%2$s</span>',
+		esc_attr( $status ),
+		esc_html( $label )
+	);
+}
+

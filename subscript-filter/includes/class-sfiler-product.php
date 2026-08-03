@@ -12,11 +12,25 @@ class Sfiler_Product {
 		add_filter( 'woocommerce_product_data_tabs', array( __CLASS__, 'add_product_tab' ) );
 		add_action( 'woocommerce_product_data_panels', array( __CLASS__, 'render_panel' ) );
 		add_action( 'woocommerce_process_product_meta', array( __CLASS__, 'save' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
+	}
+
+	public static function enqueue_admin_assets( $hook ) {
+		if ( ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
+			return;
+		}
+
+		$screen = get_current_screen();
+		if ( ! $screen || 'product' !== $screen->post_type ) {
+			return;
+		}
+
+		wp_enqueue_style( 'sfiler-admin', SFILER_PLUGIN_URL . 'assets/css/sfiler-admin.css', array(), SFILER_VERSION );
 	}
 
 	public static function add_product_tab( $tabs ) {
 		$tabs['sfiler_subscription'] = array(
-			'label'    => __( 'Subscript Filter', 'subscript-filter' ),
+			'label'    => __( 'Subscriptions', 'subscript-filter' ),
 			'target'   => 'sfiler_subscription_data',
 			'class'    => array( 'show_if_simple', 'show_if_variable' ),
 			'priority' => 65,
@@ -24,30 +38,40 @@ class Sfiler_Product {
 		return $tabs;
 	}
 
+	/**
+	 * The standard billing frequencies offered in the admin UI and the
+	 * storefront dropdown, e.g. 1/2/3/6/12 months.
+	 */
+	public static function get_preset_frequencies() {
+		return array(
+			array( 'count' => 1, 'unit' => 'month' ),
+			array( 'count' => 2, 'unit' => 'month' ),
+			array( 'count' => 3, 'unit' => 'month' ),
+			array( 'count' => 6, 'unit' => 'month' ),
+			array( 'count' => 12, 'unit' => 'month' ),
+		);
+	}
+
 	public static function render_panel() {
 		global $post;
 
-		$product_id      = $post->ID;
-		$enabled         = get_post_meta( $product_id, '_sfiler_enabled', true );
-		$discount        = get_post_meta( $product_id, '_sfiler_discount_percent', true );
-		$signup_fee      = get_post_meta( $product_id, '_sfiler_signup_fee', true );
-		$frequencies     = get_post_meta( $product_id, '_sfiler_frequencies', true );
-		$frequencies     = is_array( $frequencies ) ? $frequencies : array();
+		$product_id  = $post->ID;
+		$enabled     = get_post_meta( $product_id, '_sfiler_enabled', true );
+		$discount    = get_post_meta( $product_id, '_sfiler_discount_percent', true );
+		$frequencies = get_post_meta( $product_id, '_sfiler_frequencies', true );
+		$frequencies = is_array( $frequencies ) ? $frequencies : array();
 
-		if ( empty( $frequencies ) ) {
-			$frequencies = array( array( 'count' => 1, 'unit' => 'month' ) );
-		}
-
-		$units = sfiler_get_interval_units();
+		$global_discount = (float) get_option( 'sfiler_global_discount_percent', 10 );
+		$presets         = self::get_preset_frequencies();
 		?>
-		<div id="sfiler_subscription_data" class="panel woocommerce_options_panel">
+		<div id="sfiler_subscription_data" class="panel woocommerce_options_panel sfiler-admin-panel">
 			<div class="options_group">
 				<?php
 				woocommerce_wp_checkbox(
 					array(
 						'id'          => '_sfiler_enabled',
 						'label'       => __( 'Enable subscription', 'subscript-filter' ),
-						'description' => __( 'Allow customers to subscribe & save on this product instead of (or in addition to) a one-time purchase.', 'subscript-filter' ),
+						'description' => __( 'Let customers choose to subscribe & save on this product instead of (or alongside) a one-time purchase.', 'subscript-filter' ),
 						'value'       => $enabled ? 'yes' : 'no',
 					)
 				);
@@ -55,84 +79,48 @@ class Sfiler_Product {
 				woocommerce_wp_text_input(
 					array(
 						'id'                => '_sfiler_discount_percent',
-						'label'             => __( 'Subscription discount (%)', 'subscript-filter' ),
-						'description'       => __( 'Percentage off the regular price when a customer chooses to subscribe.', 'subscript-filter' ),
+						'label'             => __( 'Discount override (%)', 'subscript-filter' ),
+						/* translators: %s: the site-wide default discount percentage */
+						'description'       => sprintf( __( 'Leave blank to use the site-wide default of %s%%, set on Subscript Filter > Settings.', 'subscript-filter' ), rtrim( rtrim( number_format( $global_discount, 2 ), '0' ), '.' ) ),
 						'type'              => 'number',
-						'value'             => $discount !== '' ? $discount : 5,
+						'value'             => $discount,
 						'custom_attributes' => array(
-							'step' => '0.01',
-							'min'  => '0',
-							'max'  => '100',
-						),
-					)
-				);
-
-				woocommerce_wp_text_input(
-					array(
-						'id'                => '_sfiler_signup_fee',
-						'label'             => __( 'Sign-up fee', 'subscript-filter' ) . ' (' . get_woocommerce_currency_symbol() . ')',
-						'description'       => __( 'One-time fee charged on the first order only, on top of the subscription price. Leave 0 for none.', 'subscript-filter' ),
-						'type'              => 'number',
-						'value'             => $signup_fee !== '' ? $signup_fee : 0,
-						'custom_attributes' => array(
-							'step' => '0.01',
-							'min'  => '0',
+							'step'        => '0.01',
+							'min'         => '0',
+							'max'         => '100',
+							'placeholder' => rtrim( rtrim( number_format( $global_discount, 2 ), '0' ), '.' ),
 						),
 					)
 				);
 				?>
-				<p class="form-field">
-					<label><?php esc_html_e( 'Available frequencies', 'subscript-filter' ); ?></label>
-				</p>
-				<table class="widefat sfiler-frequency-table" id="sfiler-frequency-table">
-					<thead>
-						<tr>
-							<th><?php esc_html_e( 'Every', 'subscript-filter' ); ?></th>
-							<th><?php esc_html_e( 'Unit', 'subscript-filter' ); ?></th>
-							<th></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ( $frequencies as $index => $frequency ) : ?>
-							<tr>
-								<td>
-									<input type="number" min="1" step="1"
-										name="sfiler_frequency_count[]"
-										value="<?php echo esc_attr( $frequency['count'] ); ?>" />
-								</td>
-								<td>
-									<select name="sfiler_frequency_unit[]">
-										<?php foreach ( $units as $unit_key => $unit_label ) : ?>
-											<option value="<?php echo esc_attr( $unit_key ); ?>" <?php selected( $frequency['unit'], $unit_key ); ?>>
-												<?php echo esc_html( $unit_label ); ?>
-											</option>
-										<?php endforeach; ?>
-									</select>
-								</td>
-								<td>
-									<button type="button" class="button sfiler-remove-frequency">&times;</button>
-								</td>
-							</tr>
+				<p class="form-field sfiler-frequencies-field">
+					<label><?php esc_html_e( 'Billing frequency', 'subscript-filter' ); ?></label>
+					<span class="sfiler-frequency-options">
+						<?php foreach ( $presets as $preset ) : ?>
+							<?php
+							$checked = false;
+							foreach ( $frequencies as $frequency ) {
+								if ( (int) $frequency['count'] === $preset['count'] && $frequency['unit'] === $preset['unit'] ) {
+									$checked = true;
+									break;
+								}
+							}
+							$field_id = 'sfiler_frequency_' . $preset['count'] . '_' . $preset['unit'];
+							?>
+							<label for="<?php echo esc_attr( $field_id ); ?>" class="sfiler-frequency-option">
+								<input type="checkbox"
+									id="<?php echo esc_attr( $field_id ); ?>"
+									name="sfiler_frequency_presets[]"
+									value="<?php echo esc_attr( $preset['count'] . ':' . $preset['unit'] ); ?>"
+									<?php checked( $checked ); ?> />
+								<?php echo esc_html( sfiler_format_interval( $preset['count'], $preset['unit'] ) ); ?>
+							</label>
 						<?php endforeach; ?>
-					</tbody>
-				</table>
-				<p><button type="button" class="button" id="sfiler-add-frequency"><?php esc_html_e( '+ Add frequency', 'subscript-filter' ); ?></button></p>
+					</span>
+					<span class="description"><?php esc_html_e( 'Select every frequency customers can choose from at checkout. Leave all unchecked to default to every 1 month.', 'subscript-filter' ); ?></span>
+				</p>
 			</div>
 		</div>
-		<script>
-		jQuery(function($){
-			$('#sfiler-add-frequency').on('click', function(){
-				var row = $('#sfiler-frequency-table tbody tr:first').clone();
-				row.find('input').val('1');
-				$('#sfiler-frequency-table tbody').append(row);
-			});
-			$('#sfiler-frequency-table').on('click', '.sfiler-remove-frequency', function(){
-				if ($('#sfiler-frequency-table tbody tr').length > 1) {
-					$(this).closest('tr').remove();
-				}
-			});
-		});
-		</script>
 		<?php
 	}
 
@@ -141,24 +129,27 @@ class Sfiler_Product {
 		update_post_meta( $product_id, '_sfiler_enabled', $enabled );
 
 		if ( isset( $_POST['_sfiler_discount_percent'] ) ) {
-			update_post_meta( $product_id, '_sfiler_discount_percent', wc_format_decimal( wp_unslash( $_POST['_sfiler_discount_percent'] ) ) );
+			$discount = wp_unslash( $_POST['_sfiler_discount_percent'] );
+			update_post_meta( $product_id, '_sfiler_discount_percent', '' === trim( $discount ) ? '' : wc_format_decimal( $discount ) );
 		}
 
-		if ( isset( $_POST['_sfiler_signup_fee'] ) ) {
-			update_post_meta( $product_id, '_sfiler_signup_fee', wc_format_decimal( wp_unslash( $_POST['_sfiler_signup_fee'] ) ) );
-		}
+		$frequencies    = array();
+		$valid_presets  = self::get_preset_frequencies();
+		$submitted      = isset( $_POST['sfiler_frequency_presets'] ) && is_array( $_POST['sfiler_frequency_presets'] ) ? wp_unslash( $_POST['sfiler_frequency_presets'] ) : array();
 
-		$frequencies = array();
-		if ( isset( $_POST['sfiler_frequency_count'], $_POST['sfiler_frequency_unit'] )
-			&& is_array( $_POST['sfiler_frequency_count'] ) && is_array( $_POST['sfiler_frequency_unit'] ) ) {
-			$counts = wp_unslash( $_POST['sfiler_frequency_count'] );
-			$units  = wp_unslash( $_POST['sfiler_frequency_unit'] );
-			$valid_units = array_keys( sfiler_get_interval_units() );
+		foreach ( $submitted as $value ) {
+			$parts = explode( ':', sanitize_text_field( $value ) );
+			if ( count( $parts ) !== 2 ) {
+				continue;
+			}
+			$count = max( 1, (int) $parts[0] );
+			$unit  = $parts[1];
 
-			foreach ( $counts as $index => $count ) {
-				$count = max( 1, (int) $count );
-				$unit  = isset( $units[ $index ] ) && in_array( $units[ $index ], $valid_units, true ) ? $units[ $index ] : 'month';
-				$frequencies[] = array( 'count' => $count, 'unit' => $unit );
+			foreach ( $valid_presets as $preset ) {
+				if ( $preset['count'] === $count && $preset['unit'] === $unit ) {
+					$frequencies[] = array( 'count' => $count, 'unit' => $unit );
+					break;
+				}
 			}
 		}
 
@@ -169,14 +160,13 @@ class Sfiler_Product {
 		return 'yes' === get_post_meta( $product_id, '_sfiler_enabled', true );
 	}
 
+	/**
+	 * Product-level discount if one is set, otherwise the site-wide default
+	 * (Subscript Filter > Settings).
+	 */
 	public static function get_discount_percent( $product_id ) {
 		$value = get_post_meta( $product_id, '_sfiler_discount_percent', true );
-		return $value !== '' ? (float) $value : 0.0;
-	}
-
-	public static function get_signup_fee( $product_id ) {
-		$value = get_post_meta( $product_id, '_sfiler_signup_fee', true );
-		return $value !== '' ? (float) $value : 0.0;
+		return '' !== $value ? (float) $value : (float) get_option( 'sfiler_global_discount_percent', 10 );
 	}
 
 	public static function get_frequencies( $product_id ) {

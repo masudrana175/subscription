@@ -67,6 +67,7 @@ class Sfiler_Install {
 	}
 
 	private static function add_default_options() {
+		add_option( 'sfiler_global_discount_percent', 10 );
 		add_option( 'sfiler_max_retry_attempts', 3 );
 		add_option( 'sfiler_retry_interval_days', 3 );
 		add_option( 'sfiler_reminder_days_before', 3 );

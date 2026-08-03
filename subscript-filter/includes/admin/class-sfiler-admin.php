@@ -149,6 +149,7 @@ class Sfiler_Admin {
 	}
 
 	public static function render_settings_page() {
+		$global_discount = get_option( 'sfiler_global_discount_percent', 10 );
 		$max_retry       = get_option( 'sfiler_max_retry_attempts', 3 );
 		$retry_days      = get_option( 'sfiler_retry_interval_days', 3 );
 		$reminder        = get_option( 'sfiler_reminder_days_before', 3 );
@@ -177,6 +178,17 @@ class Sfiler_Admin {
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="sfiler_save_settings" />
 				<?php wp_nonce_field( 'sfiler_save_settings' ); ?>
+
+				<h2><?php esc_html_e( 'Subscription pricing', 'subscript-filter' ); ?></h2>
+				<table class="form-table">
+					<tr>
+						<th><label for="sfiler_global_discount_percent"><?php esc_html_e( 'Default subscription discount (%)', 'subscript-filter' ); ?></label></th>
+						<td>
+							<input type="number" step="0.01" min="0" max="100" id="sfiler_global_discount_percent" name="sfiler_global_discount_percent" value="<?php echo esc_attr( $global_discount ); ?>" />
+							<p class="description"><?php esc_html_e( 'Applied to every subscription-enabled product unless a product sets its own override on the Subscriptions tab.', 'subscript-filter' ); ?></p>
+						</td>
+					</tr>
+				</table>
 
 				<h2><?php esc_html_e( 'Stripe API', 'subscript-filter' ); ?></h2>
 				<?php if ( Sfiler_Stripe::payment_plugins_stripe_active() ) : ?>
@@ -238,6 +250,7 @@ class Sfiler_Admin {
 			wp_die( esc_html__( 'Not allowed.', 'subscript-filter' ) );
 		}
 
+		update_option( 'sfiler_global_discount_percent', wc_format_decimal( wp_unslash( $_POST['sfiler_global_discount_percent'] ?? 10 ) ) );
 		update_option( 'sfiler_max_retry_attempts', max( 1, absint( $_POST['sfiler_max_retry_attempts'] ) ) );
 		update_option( 'sfiler_retry_interval_days', max( 1, absint( $_POST['sfiler_retry_interval_days'] ) ) );
 		update_option( 'sfiler_reminder_days_before', absint( $_POST['sfiler_reminder_days_before'] ) );

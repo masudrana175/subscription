@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.4.0
+Stable tag: 1.5.0
 License: GPLv2 or later
 
 Adds subscribe-and-save recurring purchasing to existing WooCommerce simple
@@ -15,9 +15,8 @@ and variable products, billed through the store's existing Stripe gateway
 == Description ==
 
 Subscript Filter lets customers choose between a one-time purchase or a
-recurring subscription (at a configurable discount, sign-up fee, and
-frequency) directly on the product page, without changing the underlying
-product catalog.
+recurring subscription (at a configurable discount and frequency) directly
+on the product page, without changing the underlying product catalog.
 
 Renewals are billed automatically via the Stripe payment method the
 customer saved on their initial order — including Apple Pay, which Stripe
@@ -48,9 +47,9 @@ same way a saved card does.
 	  class-sfiler-helpers.php        Shared helpers (interval units, statuses, date math)
 	  class-sfiler-install.php        Activation: DB tables, default options
 	  class-sfiler-subscription.php   Subscription data model / CRUD / queries
-	  class-sfiler-product.php        Product data tab (enable, discount, sign-up fee, frequencies)
+	  class-sfiler-product.php        Product data tab (enable, discount override, frequencies)
 	  class-sfiler-frontend.php       Enqueues assets, renders the purchase-options box
-	  class-sfiler-cart.php           Cart pricing, sign-up fees, order line item meta
+	  class-sfiler-cart.php           Cart pricing, order line item meta
 	  class-sfiler-order.php          Creates subscriptions from paid orders, builds renewal orders
 	  class-sfiler-stripe.php         Stripe REST API calls (customer token lookup, off-session charge)
 	  class-sfiler-cron.php           Daily renewal + reminder engine
@@ -70,8 +69,10 @@ same way a saved card does.
 = Features =
 
 Product & storefront
-* Per-product subscription toggle, discount percentage, sign-up fee, and
-  one or more billing frequencies (Product data > Subscript Filter tab).
+* Site-wide default subscription discount (Subscript Filter > Settings),
+  optionally overridden per product (Product data > Subscriptions tab).
+* Pick which billing frequencies a product offers from a preset list
+  (every 1/2/3/6/12 months).
 * "Choose how to buy" box on the product page (one-time vs. subscribe &
   save), price and savings calculated live, including on variable products.
 
@@ -100,6 +101,23 @@ Admin (Subscript Filter menu)
 * Warning banner if the Stripe gateway's "Saved cards" option is off.
 
 == Changelog ==
+
+= 1.5.0 =
+* Added a site-wide default subscription discount (Subscript Filter >
+  Settings); per-product discount is now an optional override instead of
+  a required field.
+* Removed the sign-up fee feature (product field, cart fee, order meta).
+* Billing frequency is now chosen from a preset checklist (every 1, 2, 3,
+  6, or 12 months) instead of freeform count/unit rows, matching the
+  reference design. The storefront frequency dropdown defaults to the
+  longest configured frequency.
+* Restyled the storefront purchase box (spacing, custom select, dark-mode
+  support) and the admin Subscriptions tab/list/detail pages; added
+  styling to the My Account subscriptions pages, which previously loaded
+  no CSS at all. Status is now shown as a consistent colored pill
+  everywhere (admin list, admin detail, My Account list and detail).
+* General copy pass: clearer field labels and descriptions across the
+  product settings, Settings page, and storefront box.
 
 = 1.4.0 =
 Bug-fix pass across the renewal engine, pricing, and admin/customer search —

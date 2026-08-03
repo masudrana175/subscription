@@ -39,7 +39,7 @@ $nonce_url = function ( $action ) use ( $subscription ) {
 		</tr>
 		<tr>
 			<th><?php esc_html_e( 'Status', 'subscript-filter' ); ?></th>
-			<td><?php echo esc_html( ucfirst( str_replace( '-', ' ', $subscription->status ) ) ); ?></td>
+			<td><?php echo sfiler_status_badge_html( $subscription->status ); ?></td>
 		</tr>
 	</tbody>
 </table>

@@ -17,7 +17,7 @@ $savings         = $regular_price - $subscribe_price;
 	<div class="sfiler-option sfiler-option-onetime">
 		<label>
 			<input type="radio" name="sfiler_purchase_type" value="onetime" checked="checked" />
-			<span class="sfiler-option-title"><?php esc_html_e( 'One time purchase', 'subscript-filter' ); ?></span>
+			<span class="sfiler-option-title"><?php esc_html_e( 'One-time purchase', 'subscript-filter' ); ?></span>
 			<span class="sfiler-option-price">
 				<span class="sfiler-price sfiler-price-onetime"><?php echo wc_price( $regular_price ); ?></span>
 			</span>
@@ -37,25 +37,16 @@ $savings         = $regular_price - $subscribe_price;
 			</span>
 		</label>
 
-		<?php
-		$unit_labels = sfiler_get_interval_units();
-		if ( count( $frequencies ) > 1 ) :
-			?>
+		<?php if ( count( $frequencies ) > 1 ) : ?>
 			<div class="sfiler-frequency-select">
-				<label for="sfiler_frequency"><?php esc_html_e( 'Frequency:', 'subscript-filter' ); ?></label>
+				<label for="sfiler_frequency"><?php esc_html_e( 'Delivery frequency', 'subscript-filter' ); ?></label>
 				<select name="sfiler_frequency" id="sfiler_frequency">
-					<?php foreach ( $frequencies as $index => $frequency ) : ?>
-						<option value="<?php echo esc_attr( $index ); ?>">
-							<?php
-							echo esc_html(
-								sprintf(
-									/* translators: 1: interval count, 2: interval unit label */
-									__( 'Every %1$d %2$s', 'subscript-filter' ),
-									$frequency['count'],
-									strtolower( $unit_labels[ $frequency['unit'] ] )
-								)
-							);
-							?>
+					<?php
+					$default_index = count( $frequencies ) - 1;
+					foreach ( $frequencies as $index => $frequency ) :
+						?>
+						<option value="<?php echo esc_attr( $index ); ?>" <?php selected( $index, $default_index ); ?>>
+							<?php echo esc_html( sfiler_format_interval( $frequency['count'], $frequency['unit'] ) ); ?>
 						</option>
 					<?php endforeach; ?>
 				</select>

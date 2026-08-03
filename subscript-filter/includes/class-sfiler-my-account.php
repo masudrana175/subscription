@@ -16,6 +16,13 @@ class Sfiler_My_Account {
 		add_filter( 'woocommerce_account_menu_items', array( __CLASS__, 'add_menu_item' ) );
 		add_action( 'woocommerce_account_' . self::ENDPOINT . '_endpoint', array( __CLASS__, 'render_endpoint' ) );
 		add_action( 'template_redirect', array( __CLASS__, 'handle_actions' ) );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+	}
+
+	public static function enqueue_assets() {
+		if ( is_account_page() ) {
+			wp_enqueue_style( 'sfiler-account', SFILER_PLUGIN_URL . 'assets/css/sfiler-account.css', array(), SFILER_VERSION );
+		}
 	}
 
 	public static function add_endpoint() {

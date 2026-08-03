@@ -1,9 +1,11 @@
+/* Status pills — subscriptions list & detail page */
 .sfiler-status {
 	display: inline-block;
-	padding: 2px 10px;
+	padding: 3px 11px;
 	border-radius: 999px;
 	font-size: 12px;
 	font-weight: 600;
+	letter-spacing: 0.01em;
 	background: #f0f0f1;
 	color: #50575e;
 }
@@ -27,4 +29,69 @@
 .sfiler-status-pending-cancel {
 	background: #eef1ff;
 	color: #3a4ccb;
+}
+
+/* Product data panel — Subscriptions tab */
+.sfiler-admin-panel .sfiler-frequencies-field {
+	padding: 1em 2em 1.5em;
+}
+
+.sfiler-admin-panel .sfiler-frequencies-field > label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.6em;
+}
+
+.sfiler-frequency-options {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em 0.75em;
+	margin-bottom: 0.6em;
+}
+
+.sfiler-frequency-option {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+	padding: 0.45em 0.9em;
+	border: 1px solid #dcdcde;
+	border-radius: 999px;
+	background: #fff;
+	cursor: pointer;
+	font-weight: 500;
+	transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.sfiler-frequency-option:hover {
+	border-color: #8c8f94;
+}
+
+.sfiler-frequency-option:has(input:checked) {
+	border-color: #1c2b6b;
+	background: #f3f4fb;
+	color: #1c2b6b;
+	font-weight: 600;
+}
+
+.sfiler-frequency-option input[type="checkbox"] {
+	margin: 0;
+}
+
+/* Settings page section spacing */
+.wrap h2 {
+	margin-top: 1.75em;
+}
+
+.wrap h2:first-of-type {
+	margin-top: 1em;
+}
+
+/* Subscriptions list & detail page */
+.sfiler-account-subscriptions td,
+.widefat.striped td {
+	vertical-align: middle;
+}
+
+#poststuff .postbox .inside table.widefat {
+	margin-top: 0;
 }
