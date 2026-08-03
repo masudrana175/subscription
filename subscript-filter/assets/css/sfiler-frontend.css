@@ -1,0 +1,88 @@
+.sfiler-purchase-options {
+	position: relative;
+	margin: 1.5em 0;
+	border: 1px solid #d8dde3;
+	border-radius: 10px;
+	padding: 1em;
+	max-width: 420px;
+}
+
+.sfiler-discount-badge {
+	position: absolute;
+	top: -12px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: #2e9e4c;
+	color: #fff;
+	font-weight: 700;
+	font-size: 0.8em;
+	padding: 4px 14px;
+	border-radius: 999px;
+}
+
+.sfiler-option {
+	border: 1px solid #d8dde3;
+	border-radius: 8px;
+	padding: 0.85em 1em;
+	margin-top: 0.75em;
+}
+
+.sfiler-option:first-of-type {
+	margin-top: 1.25em;
+}
+
+.sfiler-option label {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5em;
+	cursor: pointer;
+}
+
+.sfiler-option input[type="radio"] {
+	margin: 0;
+}
+
+.sfiler-option-subscribe.sfiler-selected,
+.sfiler-option input[type="radio"]:checked {
+	accent-color: #1c2b6b;
+}
+
+.sfiler-option:has(input[type="radio"]:checked) {
+	border-color: #1c2b6b;
+	background: #f3f4fb;
+}
+
+.sfiler-option-title {
+	font-weight: 600;
+}
+
+.sfiler-option-price {
+	margin-left: auto;
+	text-align: right;
+}
+
+.sfiler-price {
+	font-weight: 700;
+	font-size: 1.1em;
+}
+
+.sfiler-regular-price del {
+	color: #8a8f98;
+	margin-left: 0.4em;
+}
+
+.sfiler-savings {
+	display: block;
+	font-size: 0.85em;
+	color: #2e9e4c;
+}
+
+.sfiler-frequency-select {
+	margin-top: 0.75em;
+	padding-left: 1.9em;
+}
+
+.sfiler-frequency-select select {
+	margin-left: 0.5em;
+}
