@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 
 Adds subscribe-and-save recurring purchasing to existing WooCommerce simple
@@ -27,10 +27,15 @@ same way a saved card does.
 = Requirements =
 
 * WooCommerce
-* WooCommerce Stripe Payment Gateway (official), configured with "Saved
-  cards" / tokenization enabled so a reusable payment method exists to
-  charge for renewals. The admin screens show a warning banner if this
-  isn't turned on.
+* A Stripe checkout plugin that saves reusable payment methods for logged-in
+  customers (tested against Payment Plugins for Stripe WooCommerce; also
+  works with the official WooCommerce Stripe Payment Gateway). Subscript
+  Filter does not read that plugin's settings — it charges renewals through
+  its own Stripe API key, configured on Subscript Filter > Settings, so it
+  is not tied to any single checkout plugin's internal option names.
+* The Stripe secret key entered in Settings must belong to the same Stripe
+  account your storefront checkout uses (customers/payment methods are
+  account-scoped).
 
 = Plugin structure =
 
@@ -91,6 +96,19 @@ Admin (Subscript Filter menu)
 * Warning banner if the Stripe gateway's "Saved cards" option is off.
 
 == Changelog ==
+
+= 1.2.0 =
+* Stripe secret key is now configured directly on Subscript Filter's own
+  Settings page (test/live keys, test-mode toggle, "Test connection"
+  button) instead of being read from another gateway plugin's option
+  storage, so it works the same with Payment Plugins for Stripe WooCommerce,
+  the official WooCommerce Stripe Gateway, or any similar plugin.
+* Saved payment method lookup now matches any gateway ID containing
+  "stripe" (not just the official plugin's exact ID), and resolves the
+  Stripe customer ID by asking Stripe which customer a payment method is
+  attached to, rather than guessing a plugin-specific user-meta key.
+* Updated the "not configured" admin warning to point at Subscript Filter's
+  own settings instead of a specific gateway's settings page.
 
 = 1.1.0 =
 * Restructured into includes/ (core) and includes/admin/ (admin-only), with

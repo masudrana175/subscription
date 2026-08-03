@@ -138,7 +138,7 @@ class Sfiler_My_Account {
 			return;
 		}
 
-		$stripe_customer_id = get_user_meta( get_current_user_id(), '_stripe_customer_id', true );
+		$stripe_customer_id = Sfiler_Stripe::resolve_customer_for_token( $token );
 
 		Sfiler_Subscription::update(
 			$subscription->id,

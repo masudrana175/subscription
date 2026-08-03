@@ -13,6 +13,7 @@ class Sfiler_Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'maybe_show_saved_cards_notice' ) );
 		add_action( 'admin_post_sfiler_save_settings', array( __CLASS__, 'save_settings' ) );
+		add_action( 'admin_post_sfiler_test_stripe_connection', array( __CLASS__, 'test_stripe_connection' ) );
 		add_action( 'admin_post_sfiler_retry_subscription', array( __CLASS__, 'retry_subscription' ) );
 		add_action( 'admin_post_sfiler_cancel_subscription', array( __CLASS__, 'cancel_subscription' ) );
 		add_action( 'admin_post_sfiler_update_subscription', array( __CLASS__, 'update_subscription' ) );
@@ -82,7 +83,7 @@ class Sfiler_Admin {
 			return;
 		}
 
-		if ( sfiler_stripe_saved_cards_enabled() ) {
+		if ( Sfiler_Stripe::is_configured() ) {
 			return;
 		}
 		?>
@@ -90,9 +91,9 @@ class Sfiler_Admin {
 			<p>
 				<?php
 				printf(
-					/* translators: %s: link to Stripe settings */
-					esc_html__( 'Subscript Filter: "Saved cards" is not enabled on the WooCommerce Stripe Gateway. Renewals cannot be charged without it. %s', 'subscript-filter' ),
-					'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=stripe' ) ) . '">' . esc_html__( 'Fix this now', 'subscript-filter' ) . '</a>'
+					/* translators: %s: link to Subscript Filter settings */
+					esc_html__( 'Subscript Filter: no Stripe secret key is configured yet, so renewals cannot be charged. %s', 'subscript-filter' ),
+					'<a href="' . esc_url( admin_url( 'admin.php?page=sfiler-settings' ) ) . '">' . esc_html__( 'Add it now', 'subscript-filter' ) . '</a>'
 				);
 				?>
 			</p>
@@ -148,15 +149,55 @@ class Sfiler_Admin {
 	}
 
 	public static function render_settings_page() {
-		$max_retry  = get_option( 'sfiler_max_retry_attempts', 3 );
-		$retry_days = get_option( 'sfiler_retry_interval_days', 3 );
-		$reminder   = get_option( 'sfiler_reminder_days_before', 3 );
+		$max_retry       = get_option( 'sfiler_max_retry_attempts', 3 );
+		$retry_days      = get_option( 'sfiler_retry_interval_days', 3 );
+		$reminder        = get_option( 'sfiler_reminder_days_before', 3 );
+		$test_mode       = get_option( 'sfiler_stripe_test_mode', 'no' );
+		$test_secret     = get_option( 'sfiler_stripe_test_secret_key', '' );
+		$live_secret     = get_option( 'sfiler_stripe_live_secret_key', '' );
+		$test_result_url = wp_nonce_url( add_query_arg( 'action', 'sfiler_test_stripe_connection', admin_url( 'admin-post.php' ) ), 'sfiler_test_stripe_connection' );
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Subscript Filter Settings', 'subscript-filter' ); ?></h1>
+
+			<?php if ( isset( $_GET['stripe_test'] ) ) : ?>
+				<div class="notice <?php echo 'ok' === $_GET['stripe_test'] ? 'notice-success' : 'notice-error'; ?>">
+					<p>
+						<?php
+						if ( 'ok' === $_GET['stripe_test'] ) {
+							esc_html_e( 'Stripe connection successful.', 'subscript-filter' );
+						} else {
+							echo esc_html( sprintf( __( 'Stripe connection failed: %s', 'subscript-filter' ), isset( $_GET['message'] ) ? sanitize_text_field( wp_unslash( $_GET['message'] ) ) : '' ) );
+						}
+						?>
+					</p>
+				</div>
+			<?php endif; ?>
+
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="sfiler_save_settings" />
 				<?php wp_nonce_field( 'sfiler_save_settings' ); ?>
+
+				<h2><?php esc_html_e( 'Stripe API', 'subscript-filter' ); ?></h2>
+				<p class="description">
+					<?php esc_html_e( 'Renewals are charged directly through the Stripe API, independently of whichever WooCommerce Stripe checkout plugin (e.g. Payment Plugins for Stripe WooCommerce) handles your storefront checkout. Enter the secret key(s) from your Stripe Dashboard > Developers > API keys.', 'subscript-filter' ); ?>
+				</p>
+				<table class="form-table">
+					<tr>
+						<th><label for="sfiler_stripe_test_mode"><?php esc_html_e( 'Use test mode', 'subscript-filter' ); ?></label></th>
+						<td><input type="checkbox" id="sfiler_stripe_test_mode" name="sfiler_stripe_test_mode" value="yes" <?php checked( $test_mode, 'yes' ); ?> /></td>
+					</tr>
+					<tr>
+						<th><label for="sfiler_stripe_test_secret_key"><?php esc_html_e( 'Test secret key', 'subscript-filter' ); ?></label></th>
+						<td><input type="password" autocomplete="off" class="regular-text" id="sfiler_stripe_test_secret_key" name="sfiler_stripe_test_secret_key" value="<?php echo esc_attr( $test_secret ); ?>" placeholder="sk_test_..." /></td>
+					</tr>
+					<tr>
+						<th><label for="sfiler_stripe_live_secret_key"><?php esc_html_e( 'Live secret key', 'subscript-filter' ); ?></label></th>
+						<td><input type="password" autocomplete="off" class="regular-text" id="sfiler_stripe_live_secret_key" name="sfiler_stripe_live_secret_key" value="<?php echo esc_attr( $live_secret ); ?>" placeholder="sk_live_..." /></td>
+					</tr>
+				</table>
+
+				<h2><?php esc_html_e( 'Renewal behavior', 'subscript-filter' ); ?></h2>
 				<table class="form-table">
 					<tr>
 						<th><label for="sfiler_max_retry_attempts"><?php esc_html_e( 'Max retry attempts', 'subscript-filter' ); ?></label></th>
@@ -171,9 +212,17 @@ class Sfiler_Admin {
 						<td><input type="number" min="0" id="sfiler_reminder_days_before" name="sfiler_reminder_days_before" value="<?php echo esc_attr( $reminder ); ?>" /></td>
 					</tr>
 				</table>
-				<?php submit_button(); ?>
+				<?php submit_button( __( 'Save settings', 'subscript-filter' ) ); ?>
 			</form>
-			<p><?php esc_html_e( 'Stripe API keys are read from the existing WooCommerce Stripe Gateway settings; no separate configuration is needed here.', 'subscript-filter' ); ?></p>
+
+			<p>
+				<a class="button" href="<?php echo esc_url( $test_result_url ); ?>"><?php esc_html_e( 'Test Stripe connection', 'subscript-filter' ); ?></a>
+				<span class="description"><?php esc_html_e( 'Uses whichever key matches the test-mode toggle above (save settings first).', 'subscript-filter' ); ?></span>
+			</p>
+
+			<p>
+				<?php esc_html_e( 'Note: this key only needs "Payments" read/write scope for creating off-session PaymentIntents. It must belong to the same Stripe account your storefront checkout plugin uses, since customers and payment methods are shared across the account.', 'subscript-filter' ); ?>
+			</p>
 		</div>
 		<?php
 	}
@@ -186,8 +235,32 @@ class Sfiler_Admin {
 		update_option( 'sfiler_max_retry_attempts', max( 1, absint( $_POST['sfiler_max_retry_attempts'] ) ) );
 		update_option( 'sfiler_retry_interval_days', max( 1, absint( $_POST['sfiler_retry_interval_days'] ) ) );
 		update_option( 'sfiler_reminder_days_before', absint( $_POST['sfiler_reminder_days_before'] ) );
+		update_option( 'sfiler_stripe_test_mode', isset( $_POST['sfiler_stripe_test_mode'] ) ? 'yes' : 'no' );
+		update_option( 'sfiler_stripe_test_secret_key', sanitize_text_field( wp_unslash( $_POST['sfiler_stripe_test_secret_key'] ?? '' ) ) );
+		update_option( 'sfiler_stripe_live_secret_key', sanitize_text_field( wp_unslash( $_POST['sfiler_stripe_live_secret_key'] ?? '' ) ) );
 
 		wp_safe_redirect( add_query_arg( array( 'page' => 'sfiler-settings', 'updated' => 1 ), admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	public static function test_stripe_connection() {
+		if ( ! current_user_can( 'manage_woocommerce' ) || ! check_admin_referer( 'sfiler_test_stripe_connection' ) ) {
+			wp_die( esc_html__( 'Not allowed.', 'subscript-filter' ) );
+		}
+
+		$secret_key = Sfiler_Stripe::get_secret_key();
+		$result     = empty( $secret_key ) ? __( 'No secret key saved for the current mode.', 'subscript-filter' ) : Sfiler_Stripe::test_connection( $secret_key );
+
+		$redirect_args = array(
+			'page'        => 'sfiler-settings',
+			'stripe_test' => true === $result ? 'ok' : 'fail',
+		);
+
+		if ( true !== $result ) {
+			$redirect_args['message'] = $result;
+		}
+
+		wp_safe_redirect( add_query_arg( $redirect_args, admin_url( 'admin.php' ) ) );
 		exit;
 	}
 

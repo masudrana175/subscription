@@ -42,11 +42,3 @@ function sfiler_format_interval( $count, $unit ) {
 	);
 }
 
-/**
- * Whether the store's Stripe gateway is configured to save reusable payment
- * methods. Without this, renewals have nothing to charge.
- */
-function sfiler_stripe_saved_cards_enabled() {
-	$settings = get_option( 'woocommerce_stripe_settings', array() );
-	return ! empty( $settings ) && isset( $settings['saved_cards'] ) && 'yes' === $settings['saved_cards'];
-}
