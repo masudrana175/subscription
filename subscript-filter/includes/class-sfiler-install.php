@@ -13,6 +13,13 @@ class Sfiler_Install {
 			wp_schedule_event( time() + 300, 'daily', 'sfiler_process_renewals' );
 		}
 
+		// Register the My Account "subscriptions" endpoint and flush so the
+		// rewrite rule takes effect immediately on activation, instead of
+		// 404ing until WordPress happens to flush rules for some other reason.
+		add_rewrite_endpoint( 'subscriptions', EP_ROOT | EP_PAGES );
+		flush_rewrite_rules();
+		update_option( 'sfiler_endpoint_flushed', 'yes' );
+
 		update_option( 'sfiler_db_version', SFILER_VERSION );
 	}
 

@@ -27,6 +27,16 @@ class Sfiler_My_Account {
 
 	public static function add_endpoint() {
 		add_rewrite_endpoint( self::ENDPOINT, EP_ROOT | EP_PAGES );
+
+		// A newly registered endpoint 404s until WordPress's cached rewrite
+		// rules are flushed. Activation already does this for fresh installs,
+		// but a store that activated the plugin before this endpoint existed
+		// needs a one-time flush too — this runs on the next page load and
+		// then never again, guarded by the option below.
+		if ( 'yes' !== get_option( 'sfiler_endpoint_flushed' ) ) {
+			flush_rewrite_rules();
+			update_option( 'sfiler_endpoint_flushed', 'yes' );
+		}
 	}
 
 	public static function add_menu_item( $items ) {

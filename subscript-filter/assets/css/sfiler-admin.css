@@ -43,40 +43,59 @@
 }
 
 .sfiler-admin-panel .sfiler-frequencies-field > label {
-	display: block;
-	float: none;
-	width: auto;
+	display: block !important;
+	position: static !important;
+	float: none !important;
+	width: auto !important;
+	height: auto !important;
+	margin: 0 0 0.6em !important;
+	padding: 0 !important;
 	font-weight: 600;
-	margin-bottom: 0.6em;
 }
 
-.sfiler-frequency-options {
-	display: flex;
-	flex-wrap: wrap;
+.sfiler-admin-panel .sfiler-frequency-options {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	position: static !important;
 	gap: 0.5em 0.75em;
-	margin-bottom: 0.6em;
+	margin: 0 0 0.6em !important;
+	padding: 0 !important;
 }
 
 /*
- * WooCommerce's own admin CSS applies float:left; width:150px to every
- * <label> inside a .form-field — including these nested per-checkbox
- * labels, which broke the layout entirely (labels collapsed onto each
- * other, only the last one's text stayed visible). Reset explicitly with
- * enough specificity to win over that rule.
+ * The product edit screen loads CSS from every active plugin's own admin
+ * settings tab (this store has several). Generic selectors in one of them
+ * — most commonly a toggle-switch pattern using bare `label` rules with
+ * float/position/width — can clash with these per-checkbox <label>
+ * elements and collapse or stack them on top of each other. Every property
+ * that layout depends on is reset here with !important so this component
+ * can't inherit page-specific styling from anywhere else.
  */
 .sfiler-admin-panel .sfiler-frequencies-field .sfiler-frequency-option {
-	display: inline-flex;
-	float: none;
-	width: auto;
+	display: inline-flex !important;
+	position: static !important;
+	float: none !important;
+	width: auto !important;
+	height: auto !important;
+	max-width: none !important;
+	overflow: visible !important;
+	top: auto !important;
+	left: auto !important;
+	right: auto !important;
+	bottom: auto !important;
+	transform: none !important;
 	align-items: center;
 	gap: 0.4em;
-	padding: 0.45em 0.9em;
+	margin: 0 !important;
+	padding: 0.45em 0.9em !important;
 	border: 1.5px solid #dcdcde;
 	border-radius: 999px;
 	background: #fff;
 	cursor: pointer;
 	font-weight: 500;
+	line-height: normal;
 	white-space: nowrap;
+	box-sizing: border-box;
 	transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
 
@@ -84,7 +103,8 @@
 	border-color: var(--sfiler-primary);
 }
 
-.sfiler-admin-panel .sfiler-frequencies-field .sfiler-frequency-option:has(input:checked) {
+.sfiler-admin-panel .sfiler-frequencies-field .sfiler-frequency-option:has(input:checked),
+.sfiler-admin-panel .sfiler-frequencies-field .sfiler-frequency-option.sfiler-checked {
 	border-color: var(--sfiler-primary);
 	background: var(--sfiler-primary-soft);
 	color: #0d5a76;
@@ -92,10 +112,14 @@
 }
 
 .sfiler-admin-panel .sfiler-frequencies-field .sfiler-frequency-option input[type="checkbox"] {
-	margin: 0;
-	float: none;
-	width: 16px;
-	height: 16px;
+	position: static !important;
+	float: none !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	width: 16px !important;
+	height: 16px !important;
+	min-width: 16px;
+	transform: none !important;
 	accent-color: var(--sfiler-primary);
 }
 

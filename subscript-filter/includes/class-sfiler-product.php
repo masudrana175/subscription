@@ -107,7 +107,7 @@ class Sfiler_Product {
 							}
 							$field_id = 'sfiler_frequency_' . $preset['count'] . '_' . $preset['unit'];
 							?>
-							<label for="<?php echo esc_attr( $field_id ); ?>" class="sfiler-frequency-option">
+							<label for="<?php echo esc_attr( $field_id ); ?>" class="sfiler-frequency-option<?php echo $checked ? ' sfiler-checked' : ''; ?>">
 								<input type="checkbox"
 									id="<?php echo esc_attr( $field_id ); ?>"
 									name="sfiler_frequency_presets[]"
@@ -121,6 +121,15 @@ class Sfiler_Product {
 				</p>
 			</div>
 		</div>
+		<script>
+		jQuery(function ($) {
+			// :has() isn't supported everywhere, so the checked-state highlight
+			// is driven by a real class toggle rather than relying on it alone.
+			$('.sfiler-frequency-option input[type="checkbox"]').on('change', function () {
+				$(this).closest('.sfiler-frequency-option').toggleClass('sfiler-checked', this.checked);
+			});
+		});
+		</script>
 		<?php
 	}
 

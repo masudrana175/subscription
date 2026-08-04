@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.5.1
+Stable tag: 1.5.2
 License: GPLv2 or later
 
 Adds subscribe-and-save recurring purchasing to existing WooCommerce simple
@@ -101,6 +101,21 @@ Admin (Subscript Filter menu)
 * Warning banner if the Stripe gateway's "Saved cards" option is off.
 
 == Changelog ==
+
+= 1.5.2 =
+* Fixed `/my-account/subscriptions/` 404ing. Registering a new endpoint
+  with `add_rewrite_endpoint()` isn't enough on its own — WordPress's
+  cached rewrite rules need an explicit flush before the URL resolves.
+  Stores that activated the plugin before this endpoint existed now get a
+  one-time automatic flush on the next page load (in addition to the
+  flush that already runs on fresh activation).
+* Hardened the admin frequency-checkbox CSS with explicit resets
+  (position/float/width/margin/transform, all `!important`) since the
+  product edit screen loads other active plugins' admin CSS too, and a
+  generic `label` rule from one of them was still conflicting with the
+  1.5.1 fix. The checked-state highlight no longer depends solely on
+  `:has()` either — a small inline script toggles a class on change so it
+  works the same in browsers without `:has()` support.
 
 = 1.5.1 =
 * Fixed the admin frequency checkboxes rendering broken/unstyled: nesting
