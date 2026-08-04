@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Subscript Filter
  * Description: Adds recurring subscription purchasing to WooCommerce simple and variable products, with Stripe (card and Apple Pay) off-session renewal billing.
- * Version: 1.5.2
+ * Version: 1.5.3
  * Author: Design Filters
  * Text Domain: subscript-filter
  * Requires Plugins: woocommerce
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SFILER_VERSION', '1.5.2' );
+define( 'SFILER_VERSION', '1.5.3' );
 define( 'SFILER_PLUGIN_FILE', __FILE__ );
 define( 'SFILER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFILER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -28,6 +28,7 @@ function sfiler_activate() {
 
 function sfiler_deactivate() {
 	wp_clear_scheduled_hook( 'sfiler_process_renewals' );
+	wp_clear_scheduled_hook( 'sfiler_flush_rewrite_rules' );
 }
 
 add_action( 'plugins_loaded', 'sfiler_init' );

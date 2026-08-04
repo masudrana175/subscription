@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.5.2
+Stable tag: 1.5.3
 License: GPLv2 or later
 
 Adds subscribe-and-save recurring purchasing to existing WooCommerce simple
@@ -101,6 +101,21 @@ Admin (Subscript Filter menu)
 * Warning banner if the Stripe gateway's "Saved cards" option is off.
 
 == Changelog ==
+
+= 1.5.3 =
+* **Fixed a 500 error on plugin activation and on Settings > Permalinks.**
+  1.5.2 called `flush_rewrite_rules()` directly from the activation hook
+  and synchronously on `init` — both against WordPress's own guidance
+  (activation hooks run in an earlier, less complete bootstrap context)
+  and, on a store with a large catalog, expensive enough to time the
+  request out. Worse, the "don't do this again" flag was only saved
+  *after* the flush ran, so if the flush itself failed or timed out, nothing
+  ever marked it done — meaning it would silently retry, and could 500
+  again, on every subsequent page load.
+  Fixed by never calling `flush_rewrite_rules()` inline on a user-facing
+  request: the guard flag is now set first, and the actual flush runs
+  once via a background WP-Cron event a few seconds later, completely
+  outside the request that triggered it.
 
 = 1.5.2 =
 * Fixed `/my-account/subscriptions/` 404ing. Registering a new endpoint

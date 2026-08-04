@@ -11,8 +11,11 @@ class Sfiler_My_Account {
 
 	const ENDPOINT = 'subscriptions';
 
+	const FLUSH_EVENT = 'sfiler_flush_rewrite_rules';
+
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'add_endpoint' ) );
+		add_action( self::FLUSH_EVENT, array( __CLASS__, 'do_flush_rewrite_rules' ) );
 		add_filter( 'woocommerce_account_menu_items', array( __CLASS__, 'add_menu_item' ) );
 		add_action( 'woocommerce_account_' . self::ENDPOINT . '_endpoint', array( __CLASS__, 'render_endpoint' ) );
 		add_action( 'template_redirect', array( __CLASS__, 'handle_actions' ) );
@@ -29,14 +32,25 @@ class Sfiler_My_Account {
 		add_rewrite_endpoint( self::ENDPOINT, EP_ROOT | EP_PAGES );
 
 		// A newly registered endpoint 404s until WordPress's cached rewrite
-		// rules are flushed. Activation already does this for fresh installs,
-		// but a store that activated the plugin before this endpoint existed
-		// needs a one-time flush too — this runs on the next page load and
-		// then never again, guarded by the option below.
+		// rules are flushed. flush_rewrite_rules() can be a genuinely
+		// expensive operation on a store with a large catalog, so it's never
+		// called inline on a front-end/admin request here — that risks
+		// timing the request out (500) instead of just being slow. The flag
+		// is set *before* scheduling the flush, not after, so a failed or
+		// slow flush can't cause this to retry (and risk 500ing) on every
+		// subsequent page load — worst case the endpoint just needs a manual
+		// "Save" on Settings > Permalinks.
 		if ( 'yes' !== get_option( 'sfiler_endpoint_flushed' ) ) {
-			flush_rewrite_rules();
 			update_option( 'sfiler_endpoint_flushed', 'yes' );
+
+			if ( ! wp_next_scheduled( self::FLUSH_EVENT ) ) {
+				wp_schedule_single_event( time() + 30, self::FLUSH_EVENT );
+			}
 		}
+	}
+
+	public static function do_flush_rewrite_rules() {
+		flush_rewrite_rules();
 	}
 
 	public static function add_menu_item( $items ) {
