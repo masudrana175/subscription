@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.5.0
+Stable tag: 1.5.1
 License: GPLv2 or later
 
 Adds subscribe-and-save recurring purchasing to existing WooCommerce simple
@@ -101,6 +101,16 @@ Admin (Subscript Filter menu)
 * Warning banner if the Stripe gateway's "Saved cards" option is off.
 
 == Changelog ==
+
+= 1.5.1 =
+* Fixed the admin frequency checkboxes rendering broken/unstyled: nesting
+  a `<label>` per checkbox inside a WooCommerce `.form-field` meant each
+  one inherited WooCommerce's own `.form-field label { float:left;
+  width:150px }` admin style, collapsing the layout. Reset explicitly for
+  those nested labels.
+* Applied the site's brand colors (#1f9ccf / #c74e9d) across the
+  storefront purchase box, the admin frequency picker and buttons, and
+  the My Account subscription pages, replacing the placeholder palette.
 
 = 1.5.0 =
 * Added a site-wide default subscription discount (Subscript Filter >

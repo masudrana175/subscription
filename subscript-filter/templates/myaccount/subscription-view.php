@@ -46,9 +46,9 @@ $nonce_url = function ( $action ) use ( $subscription ) {
 
 <p>
 	<?php if ( 'active' === $subscription->status ) : ?>
-		<a class="button" href="<?php echo esc_url( $nonce_url( 'pause' ) ); ?>"><?php esc_html_e( 'Pause', 'subscript-filter' ); ?></a>
+		<a class="button sfiler-btn" href="<?php echo esc_url( $nonce_url( 'pause' ) ); ?>"><?php esc_html_e( 'Pause', 'subscript-filter' ); ?></a>
 	<?php elseif ( in_array( $subscription->status, array( 'on-hold', 'cancelled' ), true ) ) : ?>
-		<a class="button" href="<?php echo esc_url( $nonce_url( 'reactivate' ) ); ?>"><?php esc_html_e( 'Reactivate', 'subscript-filter' ); ?></a>
+		<a class="button sfiler-btn" href="<?php echo esc_url( $nonce_url( 'reactivate' ) ); ?>"><?php esc_html_e( 'Reactivate', 'subscript-filter' ); ?></a>
 	<?php endif; ?>
 
 	<?php if ( in_array( $subscription->status, array( 'active', 'on-hold' ), true ) ) : ?>
@@ -69,7 +69,7 @@ $nonce_url = function ( $action ) use ( $subscription ) {
 				</option>
 			<?php endforeach; ?>
 		</select>
-		<button type="submit" class="button"><?php esc_html_e( 'Update frequency', 'subscript-filter' ); ?></button>
+		<button type="submit" class="button sfiler-btn"><?php esc_html_e( 'Update frequency', 'subscript-filter' ); ?></button>
 	</form>
 <?php endif; ?>
 
@@ -92,7 +92,7 @@ $nonce_url = function ( $action ) use ( $subscription ) {
 					</option>
 				<?php endforeach; ?>
 			</select>
-			<button type="submit" class="button"><?php esc_html_e( 'Use this payment method', 'subscript-filter' ); ?></button>
+			<button type="submit" class="button sfiler-btn"><?php esc_html_e( 'Use this payment method', 'subscript-filter' ); ?></button>
 		</form>
 	<?php endif; ?>
 <?php endif; ?>
