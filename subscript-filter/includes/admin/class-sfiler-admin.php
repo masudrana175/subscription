@@ -149,6 +149,7 @@ class Sfiler_Admin {
 	}
 
 	public static function render_settings_page() {
+		$default_enabled = get_option( 'sfiler_default_enabled', 'yes' );
 		$global_discount = get_option( 'sfiler_global_discount_percent', 10 );
 		$max_retry       = get_option( 'sfiler_max_retry_attempts', 3 );
 		$retry_days      = get_option( 'sfiler_retry_interval_days', 3 );
@@ -181,6 +182,13 @@ class Sfiler_Admin {
 
 				<h2><?php esc_html_e( 'Subscription pricing', 'subscript-filter' ); ?></h2>
 				<table class="form-table">
+					<tr>
+						<th><label for="sfiler_default_enabled"><?php esc_html_e( 'Offer subscriptions on all products', 'subscript-filter' ); ?></label></th>
+						<td>
+							<input type="checkbox" id="sfiler_default_enabled" name="sfiler_default_enabled" value="yes" <?php checked( $default_enabled, 'yes' ); ?> />
+							<p class="description"><?php esc_html_e( 'When checked, every product shows the subscribe & save option by default. Turn it off for individual products on their own Subscriptions tab.', 'subscript-filter' ); ?></p>
+						</td>
+					</tr>
 					<tr>
 						<th><label for="sfiler_global_discount_percent"><?php esc_html_e( 'Default subscription discount (%)', 'subscript-filter' ); ?></label></th>
 						<td>
@@ -250,6 +258,7 @@ class Sfiler_Admin {
 			wp_die( esc_html__( 'Not allowed.', 'subscript-filter' ) );
 		}
 
+		update_option( 'sfiler_default_enabled', isset( $_POST['sfiler_default_enabled'] ) ? 'yes' : 'no' );
 		update_option( 'sfiler_global_discount_percent', wc_format_decimal( wp_unslash( $_POST['sfiler_global_discount_percent'] ?? 10 ) ) );
 		update_option( 'sfiler_max_retry_attempts', max( 1, absint( $_POST['sfiler_max_retry_attempts'] ) ) );
 		update_option( 'sfiler_retry_interval_days', max( 1, absint( $_POST['sfiler_retry_interval_days'] ) ) );

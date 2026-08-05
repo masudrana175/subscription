@@ -13,6 +13,29 @@ class Sfiler_Product {
 		add_action( 'woocommerce_product_data_panels', array( __CLASS__, 'render_panel' ) );
 		add_action( 'woocommerce_process_product_meta', array( __CLASS__, 'save' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
+		add_action( 'init', array( __CLASS__, 'maybe_migrate_legacy_disabled_meta' ) );
+	}
+
+	/**
+	 * Before this version, "Enable subscription" was strictly opt-in and the
+	 * checkbox always saved an explicit 'yes' or 'no' — so effectively every
+	 * product ever saved already has '_sfiler_enabled' = 'no' in the
+	 * database. Now that meta means something different ('no' = force-
+	 * disabled override, blank = inherit the site-wide default), those old
+	 * rows would incorrectly opt every previously-saved product out of the
+	 * new "enabled everywhere by default" behavior. Since there was no way
+	 * to deliberately opt out before now, it's safe to treat every existing
+	 * 'no' as "never touched" and clear it, one time only.
+	 */
+	public static function maybe_migrate_legacy_disabled_meta() {
+		if ( 'yes' === get_option( 'sfiler_migrated_legacy_disabled_meta' ) ) {
+			return;
+		}
+
+		global $wpdb;
+		$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_sfiler_enabled', 'meta_value' => 'no' ) );
+
+		update_option( 'sfiler_migrated_legacy_disabled_meta', 'yes' );
 	}
 
 	public static function enqueue_admin_assets( $hook ) {
@@ -62,17 +85,24 @@ class Sfiler_Product {
 		$frequencies = is_array( $frequencies ) ? $frequencies : array();
 
 		$global_discount = (float) get_option( 'sfiler_global_discount_percent', 10 );
+		$default_enabled = 'yes' === get_option( 'sfiler_default_enabled', 'yes' );
 		$presets         = self::get_preset_frequencies();
 		?>
 		<div id="sfiler_subscription_data" class="panel woocommerce_options_panel sfiler-admin-panel">
 			<div class="options_group">
 				<?php
-				woocommerce_wp_checkbox(
+				woocommerce_wp_select(
 					array(
 						'id'          => '_sfiler_enabled',
-						'label'       => __( 'Enable subscription', 'subscript-filter' ),
-						'description' => __( 'Let customers choose to subscribe & save on this product instead of (or alongside) a one-time purchase.', 'subscript-filter' ),
-						'value'       => $enabled ? 'yes' : 'no',
+						'label'       => __( 'Subscription availability', 'subscript-filter' ),
+						/* translators: %s: Enabled or Disabled, matching the site-wide default */
+						'description' => sprintf( __( 'Site-wide default (Subscript Filter > Settings) is currently: %s.', 'subscript-filter' ), $default_enabled ? __( 'enabled', 'subscript-filter' ) : __( 'disabled', 'subscript-filter' ) ),
+						'value'       => $enabled,
+						'options'     => array(
+							''    => __( 'Use site-wide default', 'subscript-filter' ),
+							'yes' => __( 'Always enabled on this product', 'subscript-filter' ),
+							'no'  => __( 'Always disabled on this product', 'subscript-filter' ),
+						),
 					)
 				);
 
@@ -134,7 +164,8 @@ class Sfiler_Product {
 	}
 
 	public static function save( $product_id ) {
-		$enabled = isset( $_POST['_sfiler_enabled'] ) ? 'yes' : 'no';
+		$enabled = isset( $_POST['_sfiler_enabled'] ) ? sanitize_text_field( wp_unslash( $_POST['_sfiler_enabled'] ) ) : '';
+		$enabled = in_array( $enabled, array( 'yes', 'no' ), true ) ? $enabled : '';
 		update_post_meta( $product_id, '_sfiler_enabled', $enabled );
 
 		if ( isset( $_POST['_sfiler_discount_percent'] ) ) {
@@ -165,8 +196,19 @@ class Sfiler_Product {
 		update_post_meta( $product_id, '_sfiler_frequencies', $frequencies );
 	}
 
+	/**
+	 * Whether a product offers subscriptions. A per-product override
+	 * ('yes'/'no') always wins; otherwise falls back to the site-wide
+	 * default (Subscript Filter > Settings).
+	 */
 	public static function is_enabled( $product_id ) {
-		return 'yes' === get_post_meta( $product_id, '_sfiler_enabled', true );
+		$override = get_post_meta( $product_id, '_sfiler_enabled', true );
+
+		if ( 'yes' === $override || 'no' === $override ) {
+			return 'yes' === $override;
+		}
+
+		return 'yes' === get_option( 'sfiler_default_enabled', 'yes' );
 	}
 
 	/**

@@ -5,7 +5,7 @@ Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 6.0
-Stable tag: 1.5.3
+Stable tag: 1.6.0
 License: GPLv2 or later
 
 Adds subscribe-and-save recurring purchasing to existing WooCommerce simple
@@ -69,6 +69,9 @@ same way a saved card does.
 = Features =
 
 Product & storefront
+* Subscriptions are offered on every product by default (toggleable on
+  Subscript Filter > Settings), with a per-product override to force a
+  specific product on or off.
 * Site-wide default subscription discount (Subscript Filter > Settings),
   optionally overridden per product (Product data > Subscriptions tab).
 * Pick which billing frequencies a product offers from a preset list
@@ -101,6 +104,20 @@ Admin (Subscript Filter menu)
 * Warning banner if the Stripe gateway's "Saved cards" option is off.
 
 == Changelog ==
+
+= 1.6.0 =
+* Subscriptions are now offered on every product by default instead of
+  being opt-in per product. New "Offer subscriptions on all products"
+  toggle on Subscript Filter > Settings (on by default). The per-product
+  "Enable subscription" checkbox became a 3-way choice: use the site-wide
+  default, always enabled, or always disabled — for the rare product that
+  needs to opt out.
+* One-time data migration: before this version "Enable subscription" was
+  strictly opt-in, so every previously-saved product already had an
+  explicit "disabled" row in the database (there was no way to
+  deliberately opt out until now). Those legacy rows are cleared once so
+  existing products pick up the new site-wide default instead of staying
+  force-disabled.
 
 = 1.5.3 =
 * **Fixed a 500 error on plugin activation and on Settings > Permalinks.**
